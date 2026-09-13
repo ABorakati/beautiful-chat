@@ -1,0 +1,16 @@
+client/components/tool-callouts.tsx
+  h_0ae9538d78aa59 175-180,458,484-488
+client/live-renderers.tsx
+  h_0ae9538d78aa59 421-424
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "55ea4bb6574bbb3ea9834cd4d15cf58e9a6f62ea",
+  "prompts": {},
+  "humans": {
+    "h_0ae9538d78aa59": {
+      "author": "ABorakati <ABorakati@users.noreply.github.com>"
+    }
+  }
+}
