@@ -69,6 +69,8 @@ export interface TaskListData {
 export type ToolCallKind =
   | "bash"
   | "shell"
+  | "git"
+  | "github"
   | "thinking"
   | "mcp"
   | "read"

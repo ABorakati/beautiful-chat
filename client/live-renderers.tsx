@@ -346,7 +346,21 @@ export function LiveToolCallRenderer({
     let askAnswer: string[] = [];
     let title = data.name || "tool";
 
-    if (rawName === "read" || detailType === "read") {
+    const isGitHubTool =
+      rawName === "github" ||
+      detailType === "github" ||
+      filePath === "xd://github" ||
+      filePath?.startsWith("xd://github/") === true;
+    const isGitCommand =
+      rawName === "git" || detailType === "git" || /^\s*git(?:\.exe)?(?:\s|$)/i.test(command ?? "");
+
+    if (isGitHubTool) {
+      toolKind = "github";
+      title = "GitHub";
+    } else if (isGitCommand) {
+      toolKind = "git";
+      title = command ? `$ ${command.trim().slice(0, 55)}` : "Git command";
+    } else if (rawName === "read" || detailType === "read") {
       toolKind = "read";
       title = filePath ? `Read ${filePath.split(/[/\\]/).pop() || filePath}` : "Read file";
     } else if (rawName === "write" || detailType === "write") {

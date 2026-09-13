@@ -13,6 +13,8 @@ import { FileTypeLogo } from "./file-type-logo";
 import type { ToolCalloutData } from "../../shared/contracts";
 
 function getToolIconName(tool: string): string {
+  if (tool === "git") return "Git";
+  if (tool === "github") return "GitHub";
   if (tool === "bash" || tool === "shell") return "Terminal";
   if (tool === "read") return "Book";
   if (tool === "edit" || tool === "write") return "Pencil";
@@ -41,6 +43,9 @@ export function ToolCallout({ data, tokens, defaultExpanded = true }: ToolCallou
   const statusColor = isSuccess ? tokens.success : isRunning ? tokens.accent : tokens.danger;
 
   const statusBg = isSuccess ? tokens.successBg : isRunning ? tokens.accentBg : tokens.dangerBg;
+
+  const iconColor =
+    data.tool === "git" ? "#F05032" : data.tool === "github" ? tokens.foreground : tokens.accent;
 
   // A reply that matches no offered label is free text the user typed, so it
   // is labelled as such rather than pretending an option was picked.
@@ -398,7 +403,7 @@ export function ToolCallout({ data, tokens, defaultExpanded = true }: ToolCallou
     <View {...frosted} style={styles.container}>
       <Pressable onPress={() => setExpanded((p) => !p)} style={styles.header}>
         <View style={styles.headerLeft}>
-          <Glyph name={getToolIconName(data.tool)} size={13} color={tokens.accent} />
+          <Glyph name={getToolIconName(data.tool)} size={13} color={iconColor} />
           <Text style={styles.toolPill}>{data.tool}</Text>
           {data.filePath ? (
             <FileTypeLogo filename={data.filePath} language={data.language} size="sm" />
