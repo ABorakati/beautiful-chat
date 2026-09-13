@@ -1,0 +1,20 @@
+client/components/glyph.tsx
+  h_0ae9538d78aa59 32-51,249-258
+client/components/tool-callouts.tsx
+  h_0ae9538d78aa59 16-17,47-49,406
+client/live-renderers.tsx
+  h_0ae9538d78aa59 349-363
+shared/contracts.ts
+  h_0ae9538d78aa59 72-73
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "7ccf41df87a071361ded7e490ac9f53b11fd626c",
+  "prompts": {},
+  "humans": {
+    "h_0ae9538d78aa59": {
+      "author": "ABorakati <ABorakati@users.noreply.github.com>"
+    }
+  }
+}
