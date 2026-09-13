@@ -18,6 +18,11 @@ const ZAP_PATH =
 
 const zapCache = new Map<string, string>();
 
+const BOOK_OPEN_PATH =
+  "M12 5v16m8.001-2A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2a5 5 0 0 1 4-2z";
+
+const bookOpenCache = new Map<string, string>();
+
 /**
  * Lucide `copy`, verbatim from lucide-static: a front sheet plus the back
  * sheet's exposed corner. A single square reads as a stop button or a
@@ -58,6 +63,18 @@ function copyUri(color: string): string {
     `stroke-linejoin="round">${COPY_BODY}</svg>`;
   const uri = `data:image/svg+xml,${encodeURIComponent(svg)}`;
   copyCache.set(color, uri);
+  return uri;
+}
+
+function bookOpenUri(color: string): string {
+  const cached = bookOpenCache.get(color);
+  if (cached) return cached;
+  const svg =
+    `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" ` +
+    `fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" ` +
+    `stroke-linejoin="round"><path d="${BOOK_OPEN_PATH}"/></svg>`;
+  const uri = `data:image/svg+xml,${encodeURIComponent(svg)}`;
+  bookOpenCache.set(color, uri);
   return uri;
 }
 
@@ -414,39 +431,11 @@ function renderGlyph(name: string, size: number, color: string): ReactElement {
     case "Book":
     case "BookOpen":
       return (
-        <View
-          style={{
-            width: size,
-            height: size * 0.75,
-            flexDirection: "row",
-            justifyContent: "center",
-            alignItems: "center",
-            gap: 1.5,
-          }}
-        >
-          <View
-            style={{
-              width: size * 0.44,
-              height: size * 0.72,
-              borderWidth: stroke,
-              borderColor: color,
-              borderTopLeftRadius: 1,
-              borderBottomLeftRadius: 3,
-              borderRightWidth: 0.5,
-            }}
-          />
-          <View
-            style={{
-              width: size * 0.44,
-              height: size * 0.72,
-              borderWidth: stroke,
-              borderColor: color,
-              borderTopRightRadius: 1,
-              borderBottomRightRadius: 3,
-              borderLeftWidth: 0.5,
-            }}
-          />
-        </View>
+        <Image
+          source={{ uri: bookOpenUri(color) }}
+          style={{ width: size, height: size }}
+          resizeMode="contain"
+        />
       );
 
     case "FileCode":

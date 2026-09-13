@@ -3,6 +3,7 @@ import { View, Text, Pressable, StyleSheet } from "react-native";
 import { Glyph } from "./glyph";
 import { frosted } from "./frosted";
 import { Rotate } from "./motion";
+import { Breathe } from "./breathe";
 import { PulseDot } from "./pulse-dot";
 import { radius } from "./theme-tokens";
 import type { ExtendedThemeTokens } from "./theme-tokens";
@@ -409,10 +410,14 @@ export function ToolCallout({ data, tokens, defaultExpanded = true }: ToolCallou
     <View {...frosted} style={styles.container}>
       <Pressable onPress={() => setExpanded((p) => !p)} style={styles.header}>
         <View style={styles.headerLeft}>
-          <Glyph name={getToolIconName(data.tool)} size={13} color={iconColor} />
+          <Breathe depth={1.08} durationMs={1800}>
+            <Glyph name={getToolIconName(data.tool)} size={13} color={iconColor} />
+          </Breathe>
           <Text style={styles.toolPill}>{data.tool}</Text>
           {data.filePath ? (
-            <FileTypeLogo filename={data.filePath} language={data.language} size="sm" />
+            <Breathe depth={1.08} durationMs={1800}>
+              <FileTypeLogo filename={data.filePath} language={data.language} size="sm" />
+            </Breathe>
           ) : null}
           <Text style={styles.titleText} numberOfLines={1}>
             {data.title}
@@ -448,7 +453,9 @@ export function ToolCallout({ data, tokens, defaultExpanded = true }: ToolCallou
           )}
 
           <Rotate active={expanded}>
-            <Glyph name="ChevronDown" size={16} color={tokens.foregroundMuted} />
+            <Breathe depth={1.08} durationMs={1800}>
+              <Glyph name="ChevronDown" size={16} color={tokens.foregroundMuted} />
+            </Breathe>
           </Rotate>
         </View>
       </Pressable>
