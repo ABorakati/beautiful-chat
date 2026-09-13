@@ -172,6 +172,12 @@ export function ToolCallout({ data, tokens, defaultExpanded = true }: ToolCallou
           lineHeight: 17,
           color: tokens.foregroundMuted,
         },
+        silentCommandText: {
+          fontFamily: tokens.fontUi,
+          fontSize: 11,
+          color: tokens.foregroundSubtle,
+          fontStyle: "italic",
+        },
         // Ask tool options
         askContainer: {
           gap: 8,
@@ -449,7 +455,7 @@ export function ToolCallout({ data, tokens, defaultExpanded = true }: ToolCallou
 
       {expanded && (
         <View style={styles.body}>
-          {(data.tool === "bash" || data.tool === "shell") && (
+          {(data.tool === "bash" || data.tool === "shell" || data.tool === "git") && (
             <View style={styles.terminalWindow}>
               {(data.shell?.command || data.command) && (
                 <SyntaxHighlightBlock
@@ -473,6 +479,11 @@ export function ToolCallout({ data, tokens, defaultExpanded = true }: ToolCallou
               {data.output && !data.shell?.stdout && (
                 <Text style={styles.terminalOutput}>
                   {renderTerminalOutput(data.output, tokens)}
+                </Text>
+              )}
+              {!data.shell?.stdout && !data.shell?.stderr && !data.output && (
+                <Text style={styles.silentCommandText}>
+                  {isRunning ? "Waiting for command output…" : "Command completed without output."}
                 </Text>
               )}
             </View>

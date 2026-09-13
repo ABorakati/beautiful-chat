@@ -418,7 +418,10 @@ export function LiveToolCallRenderer({
       status:
         data.status === "running" ? "running" : data.status === "failed" ? "failed" : "completed",
       filePath,
-      language: toolKind === "bash" || toolKind === "shell" ? "bash" : languageFromPath(filePath),
+      language:
+        toolKind === "bash" || toolKind === "shell" || toolKind === "git"
+          ? "bash"
+          : languageFromPath(filePath),
       command,
       code,
       diff,
