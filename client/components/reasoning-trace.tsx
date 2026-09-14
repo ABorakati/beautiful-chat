@@ -72,6 +72,7 @@ export function ReasoningTrace({ data, tokens, defaultExpanded = false }: Reason
           borderWidth: 1,
           borderColor: isThinking ? tokens.borderSubtle : tokens.borderSubtle,
           overflow: "hidden",
+          ...tokens.boxShadow,
         },
         header: {
           flexDirection: "row",

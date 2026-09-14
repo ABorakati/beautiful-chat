@@ -87,6 +87,7 @@ export function TaskList({ data, tokens, onToggleTask }: TaskListProps) {
           borderWidth: 1,
           borderColor: tokens.borderSubtle,
           overflow: "hidden",
+          ...tokens.boxShadow,
         },
         header: {
           paddingHorizontal: 16,

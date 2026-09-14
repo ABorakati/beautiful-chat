@@ -35,6 +35,7 @@ export function PaseoToolCallout({ data, tokens, defaultExpanded = true }: Paseo
           borderWidth: 1,
           borderColor: tokens.border,
           overflow: "hidden",
+          ...tokens.boxShadow,
         },
         header: {
           flexDirection: "row",

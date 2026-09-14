@@ -75,6 +75,13 @@ export interface ExtendedThemeTokens {
   // Borders
   border: string;
   borderSubtle: string;
+  boxShadow: {
+    shadowColor: string;
+    shadowOffset: { width: number; height: number };
+    shadowOpacity: number;
+    shadowRadius: number;
+    elevation: number;
+  };
 
   // Syntax
   syntax: {
@@ -217,6 +224,13 @@ export function buildThemeTokens(
 
     border: withAlpha(fg, isDark ? 0.09 : 0.1),
     borderSubtle: withAlpha(fg, 0.06),
+    boxShadow: {
+      shadowColor: "#000000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: isDark ? 0.12 : 0.08,
+      shadowRadius: 5,
+      elevation: 1,
+    },
 
     // GitHub Dark Dimmed / GitHub Light
     syntax: {

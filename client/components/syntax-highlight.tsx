@@ -380,6 +380,7 @@ export function SyntaxHighlightBlock({
           borderRadius: radius.card,
           borderWidth: 1,
           borderColor: tokens.borderSubtle,
+          ...tokens.boxShadow,
           overflow: "hidden",
           marginVertical: compact ? 4 : 8,
         },
@@ -483,11 +484,12 @@ export function SyntaxHighlightBlock({
                 ? tokens.syntax.diffRemoveBg
                 : "transparent";
 
-          // A run of same-kind rows is one shape, so only its outer corners
-          // are rounded. Rounding every row turns a five-line hunk into five
-          // stacked pills.
-          const opensRun = kind !== null && diffTint(lines[idx - 1], language) !== kind;
-          const closesRun = kind !== null && diffTint(lines[idx + 1], language) !== kind;
+          // Adjacent added and removed rows form one hunk. Only the hunk's
+          // outer edges round, so a delete-to-add transition stays flush.
+          const previousKind = diffTint(lines[idx - 1], language);
+          const nextKind = diffTint(lines[idx + 1], language);
+          const opensRun = kind !== null && previousKind === null;
+          const closesRun = kind !== null && nextKind === null;
           const corner = radius.chip;
 
           return (

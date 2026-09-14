@@ -43,6 +43,7 @@ export function ApprovalCard({ request, tokens, onApprove, onDeny }: ApprovalCar
           borderWidth: 1,
           borderColor: isHighRisk ? tokens.dangerBorder : tokens.borderSubtle,
           overflow: "hidden",
+          ...tokens.boxShadow,
         },
         header: {
           flexDirection: "row",

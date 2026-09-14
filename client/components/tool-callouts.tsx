@@ -68,6 +68,7 @@ export function ToolCallout({ data, tokens, defaultExpanded = true }: ToolCallou
           backgroundColor: tokens.surfaceGlass,
           borderWidth: 1,
           borderColor: tokens.borderSubtle,
+          ...tokens.boxShadow,
           overflow: "hidden",
         },
         header: {
