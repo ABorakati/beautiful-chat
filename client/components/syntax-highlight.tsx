@@ -386,19 +386,32 @@ export function SyntaxHighlightBlock({
         },
         header: {
           flexDirection: "row",
-          alignItems: "center",
+          alignItems: "flex-start",
           justifyContent: "space-between",
+          gap: 8,
           paddingHorizontal: 12,
           paddingVertical: 6,
           borderBottomWidth: 1,
           borderBottomColor: tokens.borderSubtle,
           backgroundColor: tokens.surface1,
         },
+        // A long path wraps onto further lines instead of running under the
+        // copy button, so the file name stays readable at any pane width.
+        headerLeft: {
+          flexDirection: "row",
+          alignItems: "center",
+          flexWrap: "wrap",
+          gap: 8,
+          flexShrink: 1,
+          minWidth: 0,
+        },
         filename: {
           fontSize: 12,
+          lineHeight: 17,
           fontFamily: tokens.fontUi,
           fontWeight: "600",
           color: tokens.foregroundMuted,
+          flexShrink: 1,
         },
         langBadge: {
           fontSize: 11,
@@ -419,6 +432,7 @@ export function SyntaxHighlightBlock({
           paddingVertical: 3,
           borderRadius: radius.block,
           backgroundColor: tokens.surface2,
+          flexShrink: 0,
         },
         copyText: {
           fontSize: 11,
@@ -456,7 +470,7 @@ export function SyntaxHighlightBlock({
     <View {...frosted} style={styles.container}>
       {(filename || language) && (
         <View style={styles.header}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <View style={styles.headerLeft}>
             <FileTypeLogo
               filename={filename}
               language={language}
