@@ -17,6 +17,13 @@ export interface EnhancerPreferences {
   uiFont: UiFontPreference;
   codeFont: CodeFontPreference;
   frostedGlass: boolean;
+  /**
+   * Paseo maps a stream item to the plugin timeline item before any transformer
+   * runs, and that mapping carries only the text. Pasted images therefore never
+   * reach plugin code, so the enhanced bubble cannot draw them. Turning this off
+   * hands prompts back to the host, whose own bubble still shows them.
+   */
+  enhancedUserBubble: boolean;
 }
 
 const STORAGE_KEY = "paseo/omp-chat-enhancer/preferences/v1";
@@ -26,6 +33,7 @@ export const DEFAULT_PREFERENCES: Readonly<EnhancerPreferences> = {
   uiFont: "inter",
   codeFont: "code",
   frostedGlass: true,
+  enhancedUserBubble: true,
 };
 
 const listeners = new Set<() => void>();
@@ -52,6 +60,10 @@ function loadPreferences(): EnhancerPreferences {
         typeof candidate.frostedGlass === "boolean"
           ? candidate.frostedGlass
           : DEFAULT_PREFERENCES.frostedGlass,
+      enhancedUserBubble:
+        typeof candidate.enhancedUserBubble === "boolean"
+          ? candidate.enhancedUserBubble
+          : DEFAULT_PREFERENCES.enhancedUserBubble,
     };
   } catch {
     return { ...DEFAULT_PREFERENCES };

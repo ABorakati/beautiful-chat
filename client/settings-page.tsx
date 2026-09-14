@@ -200,6 +200,27 @@ export function OmpChatEnhancerSettingsPage({ theme }: PluginSurfaceProps) {
             tokens={tokens}
           />
         </View>
+
+        <View style={[styles.row, { borderTopColor: tokens.borderSubtle }]}>
+          <Text style={[styles.rowTitle, { color: tokens.foreground }]}>
+            Enhanced prompt bubble
+          </Text>
+          <Text style={[styles.rowDescription, { color: tokens.foregroundMuted }]}>
+            Paseo removes pasted images before a plugin sees the message, so the enhanced bubble
+            cannot show them. Turn this off for Paseo's own bubble with image previews. New prompts
+            follow the change.
+          </Text>
+          <OptionButton
+            label={preferences.enhancedUserBubble ? "On" : "Off"}
+            selected={preferences.enhancedUserBubble}
+            onPress={() =>
+              updateEnhancerPreferences({
+                enhancedUserBubble: !preferences.enhancedUserBubble,
+              })
+            }
+            tokens={tokens}
+          />
+        </View>
       </View>
 
       <Pressable

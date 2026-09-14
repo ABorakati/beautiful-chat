@@ -4,6 +4,7 @@ import { OmpChatEnhancerSettingsPage } from "./client/settings-page";
 import { embedFonts } from "./client/components/embed-fonts";
 import { installFrostedGlass } from "./client/components/frosted";
 import { extractPromptImages } from "./client/prompt-images";
+import { getEnhancerPreferences } from "./client/preferences";
 import {
   LiveToolCallRenderer,
   LiveReasoningRenderer,
@@ -138,6 +139,10 @@ export default function contribute(client: PluginClientContext) {
     query: { itemType: "user_message" },
     transform({ item }) {
       if (item.type !== "user_message") return undefined;
+      // The host strips images while mapping the stream item, so an enhanced
+      // bubble would silently swallow a pasted screenshot. The preference lets
+      // the reader trade the bubble for the host's image previews.
+      if (!getEnhancerPreferences().enhancedUserBubble) return undefined;
       const images = extractPromptImages(item);
       // Replacing the item drops whatever this renderer does not carry, so a
       // message with an attachment it cannot show is left to the host.
