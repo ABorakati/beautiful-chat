@@ -200,5 +200,13 @@ The plugin intercepts only OMP timeline items. It replaces their default renderi
 2. **Permissions** render the approval card and retain the host approval actions.
 3. **Todo lists** render the interactive checklist.
 4. **Tool calls** render tool-aware output, including terminal, source, diff, question, and coordination layouts.
+5. **Prompts** render the enhanced bubble with token usage.
 
-Open **Settings → Plugins → OMP Chat Enhancer** to select the accent, interface and code fonts, and frosted-glass effect.
+A file name in a source, diff, or read block is a link. Pressing it asks the daemon side to show
+that file in the machine's own file manager: Explorer selects it on Windows, Finder selects it on
+macOS, and every other platform opens the containing directory. Paseo exposes no file navigation to
+plugins, so the link cannot open Paseo's own editor.
+
+Open **Settings → Plugins → OMP Chat Enhancer** to select the accent, interface and code fonts, and
+frosted-glass effect. The same page turns the enhanced prompt bubble off. Paseo removes pasted
+images while it maps a message for plugins, so only the host's own bubble can show them.

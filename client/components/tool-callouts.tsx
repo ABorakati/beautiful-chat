@@ -32,10 +32,25 @@ interface ToolCalloutProps {
   data: ToolCalloutData;
   tokens: ExtendedThemeTokens;
   defaultExpanded?: boolean;
+  /** Shows a path in the machine's own file manager. */
+  onRevealPath?: (path: string) => void;
 }
 
-export function ToolCallout({ data, tokens, defaultExpanded = true }: ToolCalloutProps) {
+export function ToolCallout({
+  data,
+  tokens,
+  defaultExpanded = true,
+  onRevealPath,
+}: ToolCalloutProps) {
   const [expanded, setExpanded] = useState(defaultExpanded);
+
+  // A tool without a path, or a host that cannot reveal one, leaves the file
+  // name as a plain label rather than a link that does nothing.
+  const filePath = data.filePath;
+  const revealFile = useMemo(
+    () => (onRevealPath && filePath ? () => onRevealPath(filePath) : undefined),
+    [onRevealPath, filePath],
+  );
 
   const isSuccess = data.status === "completed";
   const isRunning = data.status === "running";
@@ -630,6 +645,7 @@ export function ToolCallout({ data, tokens, defaultExpanded = true }: ToolCallou
               filename={data.filePath ? `${data.filePath} ${data.lineRange || ""}` : undefined}
               tokens={tokens}
               showLineNumbers={Boolean(data.code)}
+              onRevealFile={revealFile}
               compact
             />
           )}
@@ -641,6 +657,7 @@ export function ToolCallout({ data, tokens, defaultExpanded = true }: ToolCallou
               filename={data.filePath}
               tokens={tokens}
               showLineNumbers
+              onRevealFile={revealFile}
               compact
             />
           )}

@@ -13,6 +13,8 @@ interface SyntaxHighlightProps {
   showLineNumbers?: boolean;
   filename?: string;
   compact?: boolean;
+  /** Shows the file in the machine's own file manager. Omitted: plain label. */
+  onRevealFile?: () => void;
 }
 
 const STATIC_KEYWORDS: Record<string, true> = {
@@ -351,6 +353,7 @@ export function SyntaxHighlightBlock({
   showLineNumbers = false,
   filename,
   compact = false,
+  onRevealFile,
 }: SyntaxHighlightProps) {
   const [copied, setCopied] = useState(false);
 
@@ -412,6 +415,14 @@ export function SyntaxHighlightBlock({
           fontWeight: "600",
           color: tokens.foregroundMuted,
           flexShrink: 1,
+        },
+        filenameButton: {
+          flexShrink: 1,
+          minWidth: 0,
+        },
+        filenameLink: {
+          color: tokens.accent,
+          textDecorationLine: "underline",
         },
         langBadge: {
           fontSize: 11,
@@ -477,7 +488,20 @@ export function SyntaxHighlightBlock({
               size="sm"
               foregroundColor={tokens.foreground}
             />
-            {filename ? <Text style={styles.filename}>{filename}</Text> : null}
+            {filename ? (
+              onRevealFile ? (
+                <Pressable
+                  onPress={onRevealFile}
+                  accessibilityRole="link"
+                  accessibilityLabel={`Show ${filename} in the file manager`}
+                  style={styles.filenameButton}
+                >
+                  <Text style={[styles.filename, styles.filenameLink]}>{filename}</Text>
+                </Pressable>
+              ) : (
+                <Text style={styles.filename}>{filename}</Text>
+              )
+            ) : null}
             {showLanguageBadge ? <Text style={styles.langBadge}>{language}</Text> : null}
           </View>
           <Pressable onPress={handleCopy} style={styles.copyButton}>

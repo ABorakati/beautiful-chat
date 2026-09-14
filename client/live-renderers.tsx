@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { View } from "react-native";
-import { useAgent, usePaseo } from "@getpaseo/plugin/client";
+import { useAgent, usePaseo, useRpc } from "@getpaseo/plugin/client";
 import { useRevealedText } from "@getpaseo/plugin/client/react-native";
 import type { PluginTimelineItemProps } from "@getpaseo/plugin/client";
 import type { PluginTheme } from "@getpaseo/plugin";
@@ -20,6 +20,7 @@ import type {
   TaskItemData,
   EvalCell,
 } from "../shared/contracts";
+import { revealPathRpc } from "../shared/file-rpc";
 
 type JsonValue = boolean | null | number | string | JsonValue[] | { [key: string]: JsonValue };
 
@@ -280,10 +281,13 @@ export function languageFromPath(filePath?: string): string | undefined {
 }
 
 export function LiveToolCallRenderer({
+  agentId,
   item,
   theme,
   layout,
 }: PluginTimelineItemProps<LiveToolCallPayload>) {
+  const revealPath = useRpc(revealPathRpc);
+  const cwd = useAgent(agentId, (agent) => agent.cwd);
   const preferences = useEnhancerPreferences();
   const tokens = useMemo(
     () => buildThemeTokens(theme.colors, preferences),
@@ -438,9 +442,23 @@ export function LiveToolCallRenderer({
   // Collapse completed tools by default; expand active or failed tools
   const isExpanded = data.status === "running" || data.status === "failed";
 
+  // The daemon side owns the shell, so revealing a file is one RPC. A path the
+  // daemon cannot stat answers with an error the press simply ignores.
+  const handleRevealPath = useCallback(
+    (path: string) => {
+      void revealPath({ cwd: cwd ?? "", path }).catch(() => {});
+    },
+    [cwd, revealPath],
+  );
+
   return (
     <View {...hostFontEscape}>
-      <ToolCallout data={calloutData} tokens={tokens} defaultExpanded={isExpanded} />
+      <ToolCallout
+        data={calloutData}
+        tokens={tokens}
+        defaultExpanded={isExpanded}
+        onRevealPath={handleRevealPath}
+      />
     </View>
   );
 }
