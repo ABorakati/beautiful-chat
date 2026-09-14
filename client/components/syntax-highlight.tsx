@@ -457,7 +457,12 @@ export function SyntaxHighlightBlock({
       {(filename || language) && (
         <View style={styles.header}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-            <FileTypeLogo filename={filename} language={language} size="sm" />
+            <FileTypeLogo
+              filename={filename}
+              language={language}
+              size="sm"
+              foregroundColor={tokens.foreground}
+            />
             {filename ? <Text style={styles.filename}>{filename}</Text> : null}
             {showLanguageBadge ? <Text style={styles.langBadge}>{language}</Text> : null}
           </View>

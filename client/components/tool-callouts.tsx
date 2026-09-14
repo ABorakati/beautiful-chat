@@ -142,6 +142,7 @@ export function ToolCallout({ data, tokens, defaultExpanded = true }: ToolCallou
           backgroundColor: tokens.surfaceCode,
           padding: 10,
           gap: 6,
+          ...tokens.boxShadow,
         },
         terminalPrompt: {
           fontSize: 12,
@@ -155,6 +156,7 @@ export function ToolCallout({ data, tokens, defaultExpanded = true }: ToolCallou
           borderLeftWidth: 2,
           borderLeftColor: tokens.borderSubtle,
           gap: 3,
+          ...tokens.boxShadow,
         },
         evalOutputLabel: {
           fontFamily: tokens.fontUi,
@@ -226,6 +228,7 @@ export function ToolCallout({ data, tokens, defaultExpanded = true }: ToolCallou
           borderWidth: 1,
           borderColor: tokens.borderSubtle,
           backgroundColor: tokens.surface1,
+          ...tokens.boxShadow,
         },
         askOptionCardSelected: {
           borderColor: tokens.accent,
@@ -269,6 +272,7 @@ export function ToolCallout({ data, tokens, defaultExpanded = true }: ToolCallou
           borderWidth: 1,
           borderColor: tokens.borderSubtle,
           gap: 6,
+          ...tokens.boxShadow,
         },
         subagentHeader: {
           flexDirection: "row",
@@ -300,6 +304,7 @@ export function ToolCallout({ data, tokens, defaultExpanded = true }: ToolCallou
           borderLeftWidth: 2,
           borderLeftColor: tokens.accent,
           gap: 6,
+          ...tokens.boxShadow,
         },
         thinkingHeader: {
           flexDirection: "row",
@@ -354,6 +359,7 @@ export function ToolCallout({ data, tokens, defaultExpanded = true }: ToolCallou
           borderWidth: 1,
           borderColor: tokens.borderSubtle,
           gap: 8,
+          ...tokens.boxShadow,
         },
         mcpHeader: {
           flexDirection: "row",
@@ -398,6 +404,7 @@ export function ToolCallout({ data, tokens, defaultExpanded = true }: ToolCallou
           backgroundColor: tokens.dangerBg,
           borderWidth: 1,
           borderColor: tokens.dangerBorder,
+          ...tokens.boxShadow,
         },
         mcpErrorText: {
           fontSize: 11,
@@ -417,7 +424,12 @@ export function ToolCallout({ data, tokens, defaultExpanded = true }: ToolCallou
           <Text style={styles.toolPill}>{data.tool}</Text>
           {data.filePath ? (
             <Breathe depth={1.08} durationMs={1800}>
-              <FileTypeLogo filename={data.filePath} language={data.language} size="sm" />
+              <FileTypeLogo
+                filename={data.filePath}
+                language={data.language}
+                size="sm"
+                foregroundColor={tokens.foreground}
+              />
             </Breathe>
           ) : null}
           <Text style={styles.titleText} numberOfLines={1}>

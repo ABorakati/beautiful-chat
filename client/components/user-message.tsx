@@ -108,6 +108,7 @@ export function UserMessage({
           backgroundColor: tokens.userSurface,
           borderWidth: 1,
           borderColor: tokens.userBorder,
+          ...tokens.boxShadow,
         },
         body: { flex: 1, gap: 3 },
         metaRow: {

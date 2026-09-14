@@ -23,6 +23,7 @@ interface FileTypeLogoProps {
   filename?: string;
   language?: string;
   size?: "sm" | "md" | "lg";
+  foregroundColor?: string;
 }
 
 const LANGUAGE_ALIASES: Record<string, SupportedFileType> = {
@@ -139,7 +140,12 @@ function isDirectoryPath(filename?: string): boolean {
  * The file's own brand mark. Unknown types use Lucide's document mark.
  * Explicit directory paths use Lucide's folder mark.
  */
-export function FileTypeLogo({ filename, language, size = "md" }: FileTypeLogoProps) {
+export function FileTypeLogo({
+  filename,
+  language,
+  size = "md",
+  foregroundColor,
+}: FileTypeLogoProps) {
   const type = detectFileType(filename, language);
   const { box } = DIMENSIONS[size];
   const uri = DEVICON_URIS[type];
@@ -148,7 +154,11 @@ export function FileTypeLogo({ filename, language, size = "md" }: FileTypeLogoPr
     return (
       <Image
         source={{ uri }}
-        style={{ width: box, height: box }}
+        style={{
+          width: box,
+          height: box,
+          ...(type === "markdown" && foregroundColor ? { tintColor: foregroundColor } : {}),
+        }}
         resizeMode="contain"
         accessibilityLabel={`${type} file`}
       />
