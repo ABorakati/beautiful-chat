@@ -1,6 +1,5 @@
 import React from "react";
-import { View, Text, StyleSheet, Image } from "react-native";
-import { fontMono, radius } from "./theme-tokens";
+import { Image } from "react-native";
 import { DEVICON_URIS } from "./devicon-data";
 
 export type SupportedFileType =
@@ -103,19 +102,46 @@ export function detectFileType(filename?: string, language?: string): SupportedF
 }
 
 const DIMENSIONS = {
-  sm: { box: 15, font: 8.5 },
-  md: { box: 17, font: 9.5 },
-  lg: { box: 21, font: 11 },
+  sm: { box: 15 },
+  md: { box: 17 },
+  lg: { box: 21 },
 } as const;
 
+const GENERIC_FILE_PATH =
+  "M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2zM14 2v5a1 1 0 0 0 1 1h5";
+const FOLDER_PATH =
+  "M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z";
+const genericUriCache = new Map<string, string>();
+
+function genericUri(isDirectory: boolean): string {
+  const key = isDirectory ? "folder" : "file";
+  const cached = genericUriCache.get(key);
+  if (cached) return cached;
+  const color = isDirectory ? "#EAB308" : "#94A3B8";
+  const path = isDirectory ? FOLDER_PATH : GENERIC_FILE_PATH;
+  const svg =
+    `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" ` +
+    `fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" ` +
+    `stroke-linejoin="round"><path d="${path}"/></svg>`;
+  const uri = `data:image/svg+xml,${encodeURIComponent(svg)}`;
+  genericUriCache.set(key, uri);
+  return uri;
+}
+
+function isDirectoryPath(filename?: string): boolean {
+  const path = filename?.trim();
+  return (
+    path === "." || path === ".." || path?.endsWith("/") === true || path?.endsWith("\\") === true
+  );
+}
+
 /**
- * The file's own brand mark. Devicon ships an authentic glyph for the languages
- * we care about; anything else falls back to a neutral two-letter monogram so
- * an unknown extension still reads as a file rather than a gap.
+ * The file's own brand mark. Unknown types use Lucide's document mark.
+ * Explicit directory paths use Lucide's folder mark.
  */
 export function FileTypeLogo({ filename, language, size = "md" }: FileTypeLogoProps) {
   const type = detectFileType(filename, language);
-  const { box, font } = DIMENSIONS[size];
+  const { box } = DIMENSIONS[size];
   const uri = DEVICON_URIS[type];
 
   if (uri) {
@@ -129,35 +155,13 @@ export function FileTypeLogo({ filename, language, size = "md" }: FileTypeLogoPr
     );
   }
 
-  const label = fallbackLabel(filename);
+  const isDirectory = isDirectoryPath(filename);
   return (
-    <View style={[styles.fallback, { width: box, height: box }]}>
-      <Text style={[styles.fallbackLabel, { fontSize: font }]}>{label}</Text>
-    </View>
+    <Image
+      source={{ uri: genericUri(isDirectory) }}
+      style={{ width: box, height: box }}
+      resizeMode="contain"
+      accessibilityLabel={isDirectory ? "Folder" : "File"}
+    />
   );
 }
-
-/** First two characters of the extension, else a generic marker. */
-function fallbackLabel(filename?: string): string {
-  if (!filename) return "•";
-  const base = filename.toLowerCase().split(/[/\\]/).pop() ?? "";
-  if (!base.includes(".")) return "•";
-  const ext = base.split(".").pop() ?? "";
-  return ext.slice(0, 2).toUpperCase() || "•";
-}
-
-const styles = StyleSheet.create({
-  fallback: {
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: radius.chip,
-    backgroundColor: "rgba(148, 163, 184, 0.12)",
-  },
-  fallbackLabel: {
-    fontFamily: fontMono,
-    fontWeight: "600",
-    color: "#94a3b8",
-    letterSpacing: -0.3,
-    textAlign: "center",
-  },
-});
