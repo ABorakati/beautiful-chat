@@ -1,0 +1,26 @@
+client/components/approval-card.tsx
+  h_0ae9538d78aa59 67,124,144,249
+client/components/hub-live.tsx
+  h_0ae9538d78aa59 5,62-68,70
+client/components/syntax-highlight.tsx
+  h_0ae9538d78aa59 578,600
+client/components/task-list.tsx
+  h_0ae9538d78aa59 134
+client/components/tool-callouts.tsx
+  h_0ae9538d78aa59 172,299,384,425
+client/hub-activity.ts
+  h_0ae9538d78aa59 88,90-94,96-97,99,103,119-131
+client/settings-page.tsx
+  h_0ae9538d78aa59 114-122,156-159,184-194,226-231,244-252,278-281,367-371
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "280d6d0922bf22d98c459100b0571a09aae5b280",
+  "prompts": {},
+  "humans": {
+    "h_0ae9538d78aa59": {
+      "author": "ABorakati <ABorakati@users.noreply.github.com>"
+    }
+  }
+}
