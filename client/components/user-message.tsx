@@ -105,6 +105,8 @@ export function UserMessage({
           paddingLeft: 12,
           paddingRight: 10,
           borderRadius: radius.card,
+          // The square tail marks the turn's owner, matching the native stream.
+          borderTopRightRadius: radius.chip,
           backgroundColor: tokens.userSurface,
           borderWidth: 1,
           borderColor: tokens.userBorder,

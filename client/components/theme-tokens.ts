@@ -52,8 +52,8 @@ export interface ExtendedThemeTokens {
   accent: string;
   accentForeground: string;
   accentBg: string;
-  // Authored input sits on light paper with dark text, carrying no accent:
-  // colour belongs to the agent's work, not to what the user typed.
+  // The authored turn sits on a raised theme surface, exactly as the native
+  // stream draws it. It carries no accent: colour belongs to the agent's work.
   userSurface: string;
   userBorder: string;
   userText: string;
@@ -205,10 +205,10 @@ export function buildThemeTokens(
     accent,
     accentForeground: colors.accentForeground,
     accentBg: withAlpha(accent, isDark ? 0.14 : 0.1),
-    userSurface: isDark ? "#E9EBEE" : "#ffffff",
-    userBorder: withAlpha("#000000", isDark ? 0.12 : 0.14),
-    userText: "#15181c",
-    userTextMuted: withAlpha("#15181c", 0.55),
+    userSurface: withAlpha(fg, isDark ? 0.1 : 0.06),
+    userBorder: withAlpha(fg, isDark ? 0.14 : 0.12),
+    userText: fg,
+    userTextMuted: colors.foregroundMuted,
 
     success,
     successBg: withAlpha(success, tint),
