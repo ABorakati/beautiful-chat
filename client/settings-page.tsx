@@ -353,6 +353,16 @@ export function BeautifulChatSettingsPage({ theme }: PluginSurfaceProps) {
           tokens={tokens}
         />
 
+        <ToggleRow
+          title="Collapse finished calls"
+          description="A tool call and a reasoning trace open while they run, then close themselves once they finish. Turn this off to leave every finished card open. Opening or closing a card by hand always wins."
+          value={preferences.collapseFinishedCalls}
+          onChange={(collapseFinishedCalls) =>
+            updateEnhancerPreferences({ collapseFinishedCalls })
+          }
+          tokens={tokens}
+        />
+
         <ChoiceRow
           title="Markdown style"
           description="Document is airy and built for long answers. Compact tightens the spacing for short replies. Terminal sets the body in the code face."

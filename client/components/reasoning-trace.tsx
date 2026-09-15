@@ -22,6 +22,14 @@ interface ReasoningTraceProps {
 
 export function ReasoningTrace({ data, tokens, defaultExpanded = false }: ReasoningTraceProps) {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
+
+  // Same as the tool callout: the trace mounts while the model is still
+  // streaming, so the collapse that follows arrives as a prop change.
+  const previousDefaultExpanded = useRef(defaultExpanded);
+  if (previousDefaultExpanded.current !== defaultExpanded) {
+    previousDefaultExpanded.current = defaultExpanded;
+    setIsExpanded(defaultExpanded);
+  }
   const [activeStepId, setActiveStepId] = useState<string | null>(null);
 
   const durationFormatted = (data.durationMs / 1000).toFixed(1);

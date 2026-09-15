@@ -45,6 +45,13 @@ export interface EnhancerPreferences {
   assistantMarkdown: boolean;
   /** Which look the markdown renderer uses. */
   markdownVariant: MarkdownVariantPreference;
+  /**
+   * A tool call and a reasoning trace open while they run and close again once
+   * they finish. Off leaves every finished card open, which is the better read
+   * when the output itself is the answer. A card toggled by hand keeps the
+   * state the hand gave it either way.
+   */
+  collapseFinishedCalls: boolean;
 }
 
 const STORAGE_KEY = "paseo/beautiful-chat/preferences/v1";
@@ -59,6 +66,7 @@ export const DEFAULT_PREFERENCES: Readonly<EnhancerPreferences> = {
   selectionActions: true,
   assistantMarkdown: true,
   markdownVariant: "document",
+  collapseFinishedCalls: true,
 };
 
 const listeners = new Set<() => void>();
@@ -105,6 +113,10 @@ function loadPreferences(): EnhancerPreferences {
         candidate.markdownVariant === "compact" || candidate.markdownVariant === "terminal"
           ? candidate.markdownVariant
           : DEFAULT_PREFERENCES.markdownVariant,
+      collapseFinishedCalls:
+        typeof candidate.collapseFinishedCalls === "boolean"
+          ? candidate.collapseFinishedCalls
+          : DEFAULT_PREFERENCES.collapseFinishedCalls,
     };
   } catch {
     return { ...DEFAULT_PREFERENCES };

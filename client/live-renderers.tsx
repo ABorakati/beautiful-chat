@@ -580,8 +580,10 @@ export function LiveToolCallRenderer({
     });
   }, [hubData, agentId]);
 
-  // Collapse completed tools by default; expand active or failed tools
-  const isExpanded = data.status === "running" || data.status === "failed";
+  // Collapse completed tools by default; expand active or failed tools. The
+  // preference is what a reader who wants every result in view turns off.
+  const isExpanded =
+    data.status === "running" || data.status === "failed" || !preferences.collapseFinishedCalls;
 
   // The daemon side owns the shell, so revealing a file is one RPC. A path the
   // daemon cannot stat answers with an error the press simply ignores.
@@ -682,7 +684,7 @@ export function LiveReasoningRenderer({
       <ReasoningTrace
         data={reasoningData}
         tokens={tokens}
-        defaultExpanded={data.phase === "streaming"}
+        defaultExpanded={data.phase === "streaming" || !preferences.collapseFinishedCalls}
       />
     </View>
   );
