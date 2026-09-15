@@ -1,0 +1,16 @@
+.showcase/showcase.tsx
+  h_0ae9538d78aa59 538-578,582-584
+README.md
+  h_0ae9538d78aa59 7-11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "3cfb3f98a9ea818a18a24a168791320a89da27c5",
+  "prompts": {},
+  "humans": {
+    "h_0ae9538d78aa59": {
+      "author": "ABorakati <ABorakati@users.noreply.github.com>"
+    }
+  }
+}
