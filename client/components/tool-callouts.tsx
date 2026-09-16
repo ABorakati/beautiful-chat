@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef } from "react";
 import { View, Text, Pressable, StyleSheet } from "react-native";
 import type { TextStyle, ViewStyle } from "react-native";
 import { Glyph } from "./glyph";
@@ -60,6 +60,16 @@ export function ToolCallout({
   imageFile,
 }: ToolCalloutProps) {
   const [expanded, setExpanded] = useState(defaultExpanded);
+
+  // `defaultExpanded` is not a mount-time seed. A call is rendered first while
+  // it is still running, so the collapse that belongs to its completion arrives
+  // as a prop change that `useState` would drop, leaving every watched call
+  // open. Follow the transitions only, so a manual toggle in between survives.
+  const previousDefaultExpanded = useRef(defaultExpanded);
+  if (previousDefaultExpanded.current !== defaultExpanded) {
+    previousDefaultExpanded.current = defaultExpanded;
+    setExpanded(defaultExpanded);
+  }
 
   // Every branch below needs a payload. A tool that carries none — a hub op
   // with no parsed record, an unmapped kind — would otherwise draw an empty

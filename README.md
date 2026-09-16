@@ -151,6 +151,7 @@ Devicon brand marks, and the file-manager link.
 | Code glyphs            | Iosevka with ligatures, or literal glyphs.                         |
 | Frosted glass          | Blur card surfaces, or paint them solid.                           |
 | Enhanced prompt bubble | Off hands prompts back to Paseo, whose bubble shows pasted images. |
+| Collapse finished calls | On closes a tool call or reasoning trace once it finishes. Off keeps it open. |
 
 ---
 
