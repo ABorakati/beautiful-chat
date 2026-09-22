@@ -19,7 +19,9 @@ export type MdInline =
   | { kind: "strong"; spans: MdInline[] }
   | { kind: "emphasis"; spans: MdInline[] }
   | { kind: "strike"; spans: MdInline[] }
-  | { kind: "link"; href: string; spans: MdInline[] };
+  | { kind: "link"; href: string; spans: MdInline[] }
+  /** `![alt](src)`. The renderer decides whether `src` is something it can draw. */
+  | { kind: "image"; src: string; alt: string };
 
 /** One table cell, already reduced to inline runs. */
 export type MdCell = MdInline[];
@@ -584,11 +586,17 @@ function parseInline(src: string, depth = 0): MdInline[] {
           const href = cleanHref(src.slice(labelEnd + 2, hrefEnd));
           const label = src.slice(open + 1, labelEnd);
           flush();
-          out.push({
-            kind: "link",
-            href,
-            spans: label === "" ? [{ kind: "text", text: href }] : parseInline(label, depth + 1),
-          });
+          if (ch === "!") {
+            // An image is a leaf: the alt text is prose for a reader who cannot
+            // see the picture, never a run of further markup.
+            out.push({ kind: "image", src: unescapeMarkdown(href), alt: unescapeMarkdown(label) });
+          } else {
+            out.push({
+              kind: "link",
+              href,
+              spans: label === "" ? [{ kind: "text", text: href }] : parseInline(label, depth + 1),
+            });
+          }
           index = hrefEnd + 1;
           continue;
         }
@@ -676,11 +684,20 @@ function cleanHref(raw: string): string {
   return href;
 }
 
+/**
+ * Drops the backslashes an author (or the daemon, for a provider image) put in
+ * front of `)`, `]` and `\\` so they would survive the bracket matcher.
+ */
+function unescapeMarkdown(raw: string): string {
+  return raw.replace(/\\([\\\]\)])/g, "$1");
+}
+
 /** The text a reader sees, for measuring and for copy targets. */
 export function inlineToText(spans: MdInline[]): string {
   let out = "";
   for (const span of spans) {
     if (span.kind === "text" || span.kind === "codeSpan") out += span.text;
+    else if (span.kind === "image") out += span.alt;
     else out += inlineToText(span.spans);
   }
   return out;
