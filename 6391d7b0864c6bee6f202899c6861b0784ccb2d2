@@ -1,0 +1,24 @@
+.showcase/showcase.tsx
+  h_0ae9538d78aa59 131-213,714-716
+client/components/github-body.tsx
+  h_0ae9538d78aa59 1-194
+client/components/tool-callouts.tsx
+  h_0ae9538d78aa59 18,564
+client/github-request.ts
+  h_0ae9538d78aa59 1-2,7-126,128,130-133,135-146,150,152,154-188
+client/live-renderers.tsx
+  h_0ae9538d78aa59 37,40,466,482-491,565-568,570,580
+shared/contracts.ts
+  h_0ae9538d78aa59 360-388,432
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "6391d7b0864c6bee6f202899c6861b0784ccb2d2",
+  "prompts": {},
+  "humans": {
+    "h_0ae9538d78aa59": {
+      "author": "ABorakati <ABorakati@users.noreply.github.com>"
+    }
+  }
+}

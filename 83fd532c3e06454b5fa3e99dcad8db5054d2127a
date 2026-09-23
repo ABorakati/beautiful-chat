@@ -1,0 +1,18 @@
+client/components/prompt-anchor.ts
+  h_0ae9538d78aa59 1-28
+client/live-renderers.tsx
+  h_0ae9538d78aa59 13-14,837-838,904
+index.client.tsx
+  h_0ae9538d78aa59 156-158,165-169,182
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "83fd532c3e06454b5fa3e99dcad8db5054d2127a",
+  "prompts": {},
+  "humans": {
+    "h_0ae9538d78aa59": {
+      "author": "ABorakati <ABorakati@users.noreply.github.com>"
+    }
+  }
+}

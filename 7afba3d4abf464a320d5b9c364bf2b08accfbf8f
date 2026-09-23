@@ -1,0 +1,14 @@
+client/components/syntax-highlight.tsx
+  h_0ae9538d78aa59 389,391,398-407,410,414,435,473
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "7afba3d4abf464a320d5b9c364bf2b08accfbf8f",
+  "prompts": {},
+  "humans": {
+    "h_0ae9538d78aa59": {
+      "author": "ABorakati <ABorakati@users.noreply.github.com>"
+    }
+  }
+}

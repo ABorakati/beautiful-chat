@@ -1,0 +1,24 @@
+README.md
+  h_0ae9538d78aa59 203,205-212
+client/components/syntax-highlight.tsx
+  h_0ae9538d78aa59 16-17,356,419-426,491-504
+client/components/tool-callouts.tsx
+  h_0ae9538d78aa59 35-36,39-44,47-54,648,660
+client/live-renderers.tsx
+  h_0ae9538d78aa59 1,3,23,284,289-290,445-453,456-461
+index.server.ts
+  h_0ae9538d78aa59 1-3,5-43,46-62
+shared/file-rpc.ts
+  h_0ae9538d78aa59 1-23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "421f5e8216b2bd9dc9f14d1179e89b0bc6e60b51",
+  "prompts": {},
+  "humans": {
+    "h_0ae9538d78aa59": {
+      "author": "ABorakati <ABorakati@users.noreply.github.com>"
+    }
+  }
+}

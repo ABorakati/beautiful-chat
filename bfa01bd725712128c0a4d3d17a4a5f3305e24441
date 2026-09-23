@@ -1,0 +1,14 @@
+client/components/file-type-logo.tsx
+  h_0ae9538d78aa59 2,105-107,110-137,139-140,144,158,160-165
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "bfa01bd725712128c0a4d3d17a4a5f3305e24441",
+  "prompts": {},
+  "humans": {
+    "h_0ae9538d78aa59": {
+      "author": "ABorakati <ABorakati@users.noreply.github.com>"
+    }
+  }
+}

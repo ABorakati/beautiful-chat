@@ -1,0 +1,18 @@
+.showcase/showcase.tsx
+  h_0ae9538d78aa59 26-30,198,201-221,462-537,541-543,644
+client/components/markdown/markdown-view.tsx
+  h_0ae9538d78aa59 9,445-447,449-458
+client/components/open-link.ts
+  h_0ae9538d78aa59 1-50
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "1a3f2991826ca90c7df076c778be51d27b6c4c0d",
+  "prompts": {},
+  "humans": {
+    "h_0ae9538d78aa59": {
+      "author": "ABorakati <ABorakati@users.noreply.github.com>"
+    }
+  }
+}

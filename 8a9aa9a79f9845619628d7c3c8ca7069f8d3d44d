@@ -1,0 +1,22 @@
+.showcase/showcase.tsx
+  h_0ae9538d78aa59 131-143,642-644
+client/components/tool-callouts.tsx
+  h_0ae9538d78aa59 562-583
+client/github-request.ts
+  h_0ae9538d78aa59 1-36
+client/live-renderers.tsx
+  h_0ae9538d78aa59 39,480-482,556-558
+paseo-plugin.json
+  h_0ae9538d78aa59 5-6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "8a9aa9a79f9845619628d7c3c8ca7069f8d3d44d",
+  "prompts": {},
+  "humans": {
+    "h_0ae9538d78aa59": {
+      "author": "ABorakati <ABorakati@users.noreply.github.com>"
+    }
+  }
+}

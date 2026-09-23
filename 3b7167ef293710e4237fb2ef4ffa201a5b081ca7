@@ -1,0 +1,28 @@
+client/components/approval-card.tsx
+  h_0ae9538d78aa59 46
+client/components/hub-callout.tsx
+  h_0ae9538d78aa59 33,185,368
+client/components/paseo-tool-callouts.tsx
+  h_0ae9538d78aa59 38
+client/components/reasoning-trace.tsx
+  h_0ae9538d78aa59 75
+client/components/syntax-highlight.tsx
+  h_0ae9538d78aa59 383,487-492
+client/components/task-list.tsx
+  h_0ae9538d78aa59 90
+client/components/theme-tokens.ts
+  h_0ae9538d78aa59 78-84,227-233
+client/components/tool-callouts.tsx
+  h_0ae9538d78aa59 71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "3b7167ef293710e4237fb2ef4ffa201a5b081ca7",
+  "prompts": {},
+  "humans": {
+    "h_0ae9538d78aa59": {
+      "author": "ABorakati <ABorakati@users.noreply.github.com>"
+    }
+  }
+}

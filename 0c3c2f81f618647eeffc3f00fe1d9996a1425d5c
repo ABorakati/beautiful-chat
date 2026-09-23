@@ -1,0 +1,28 @@
+.showcase/shims/plugin-react-native.tsx
+  h_0ae9538d78aa59 14-18,20-24
+.showcase/tools/collect.cjs
+  h_0ae9538d78aa59 1-52408
+.showcase/tools/collect.ts
+  h_0ae9538d78aa59 1-32
+README.md
+  h_0ae9538d78aa59 205-214,236-238
+client/components/file-type-logo.tsx
+  h_0ae9538d78aa59 3,119-121,131,133,136-141,149,152-157
+client/components/glyph.tsx
+  h_0ae9538d78aa59 1-4,13-15,17-33,36-40,42-46,49-54,56,59,62-63
+client/components/mark-bitmaps.ts
+  h_0ae9538d78aa59 1-91
+client/components/provider-logo.tsx
+  h_0ae9538d78aa59 4,52,63-68,74-77,84-86
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "0c3c2f81f618647eeffc3f00fe1d9996a1425d5c",
+  "prompts": {},
+  "humans": {
+    "h_0ae9538d78aa59": {
+      "author": "ABorakati <ABorakati@users.noreply.github.com>"
+    }
+  }
+}

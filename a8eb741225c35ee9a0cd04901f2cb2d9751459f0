@@ -1,0 +1,16 @@
+client/components/glyph.tsx
+  h_0ae9538d78aa59 21-25,69-80,434-438
+client/components/tool-callouts.tsx
+  h_0ae9538d78aa59 6,413-415,418-420,456-458
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "a8eb741225c35ee9a0cd04901f2cb2d9751459f0",
+  "prompts": {},
+  "humans": {
+    "h_0ae9538d78aa59": {
+      "author": "ABorakati <ABorakati@users.noreply.github.com>"
+    }
+  }
+}

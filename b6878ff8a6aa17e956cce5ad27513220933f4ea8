@@ -1,0 +1,18 @@
+client/preferences.ts
+  h_0ae9538d78aa59 20-26,36,63-66
+client/settings-page.tsx
+  h_0ae9538d78aa59 203-223
+index.client.tsx
+  h_0ae9538d78aa59 7,142-145
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "b6878ff8a6aa17e956cce5ad27513220933f4ea8",
+  "prompts": {},
+  "humans": {
+    "h_0ae9538d78aa59": {
+      "author": "ABorakati <ABorakati@users.noreply.github.com>"
+    }
+  }
+}

@@ -1,0 +1,28 @@
+.showcase/showcase.tsx
+  h_0ae9538d78aa59 105-130,621-628
+README.md
+  h_0ae9538d78aa59 40-50
+client/components/image-preview.tsx
+  h_0ae9538d78aa59 1-198
+client/components/tool-callouts.tsx
+  h_0ae9538d78aa59 17-19,46-51,59,83-84,460-471,696-714
+client/image-file.ts
+  h_0ae9538d78aa59 1-98
+client/live-renderers.tsx
+  h_0ae9538d78aa59 39,595-601,609
+index.server.ts
+  h_0ae9538d78aa59 2,7-85,424-455
+shared/image-rpc.ts
+  h_0ae9538d78aa59 1-31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "5afb2ee13a6384d44dff27eecf5e852bca099869",
+  "prompts": {},
+  "humans": {
+    "h_0ae9538d78aa59": {
+      "author": "ABorakati <ABorakati@users.noreply.github.com>"
+    }
+  }
+}

@@ -1,0 +1,44 @@
+client/components/approval-card.tsx
+  h_0ae9538d78aa59 5-6,273
+client/components/glow.ts
+  h_0ae9538d78aa59 1-159
+client/components/notice-callout.tsx
+  h_0ae9538d78aa59 5-6,153-156
+client/components/paseo-tool-callouts.tsx
+  h_0ae9538d78aa59 5-6,98-101
+client/components/reasoning-trace.tsx
+  h_0ae9538d78aa59 5-6,236-239
+client/components/syntax-highlight.tsx
+  h_0ae9538d78aa59 5-6,636-638
+client/components/system-card.tsx
+  h_0ae9538d78aa59 1-173
+client/components/task-list.tsx
+  h_0ae9538d78aa59 5-6,291-294
+client/components/tool-callouts.tsx
+  h_0ae9538d78aa59 6-7,436-439
+client/components/turn-footer.tsx
+  h_0ae9538d78aa59 1-130
+client/components/view-props.ts
+  h_0ae9538d78aa59 1-28
+client/live-renderers.tsx
+  h_0ae9538d78aa59 14,22-25,397,623,689,742-753,757-764,768,788,834,871-875,878-889
+client/preferences.ts
+  h_0ae9538d78aa59 21-25,57,88-91
+client/settings-page.tsx
+  h_0ae9538d78aa59 324-331
+client/system-envelope.ts
+  h_0ae9538d78aa59 1-160
+index.client.tsx
+  h_0ae9538d78aa59 7,30,254
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "5e031f92e3251c40dad6161fd800f996b6b14e3f",
+  "prompts": {},
+  "humans": {
+    "h_0ae9538d78aa59": {
+      "author": "ABorakati <ABorakati@users.noreply.github.com>"
+    }
+  }
+}

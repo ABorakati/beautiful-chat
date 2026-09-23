@@ -1,0 +1,44 @@
+.showcase/index.html
+  h_0ae9538d78aa59 20-28
+.showcase/shims/plugin-client.tsx
+  h_0ae9538d78aa59 1-25
+.showcase/shims/plugin-react-native.tsx
+  h_0ae9538d78aa59 7-12,15,19-20,24,28,35
+.showcase/showcase.js
+  h_0ae9538d78aa59 1-51338
+.showcase/showcase.tsx
+  h_0ae9538d78aa59 24,28-38,42-46,52-56,58-64,68-72,74-77,81-89,100-106,120-122,124-134,138-149,153-165,169-186,190-192,194-200,203-214,216-224,227-237,241-281,285-314,318-328,331-344,348-420,429-436
+README.md
+  h_0ae9538d78aa59 15,76-79,85,132-137,148-152,156-160,171
+client/components/embed-fonts.ts
+  h_0ae9538d78aa59 12-14,29-30,32-37,44,46-49,51-53,62-69,79-82,84-85,87-95,98-103,105-109,111
+client/components/frosted.ts
+  h_0ae9538d78aa59 25-26,28-31,33-35,48
+client/components/glyph.tsx
+  h_0ae9538d78aa59 37-40,42-54,63,65-66,283
+client/components/hub-callout.tsx
+  h_0ae9538d78aa59 1-2,143-146,149-154,157-161,166,172-177,183-184,314-315,317,321,326-328,330,332,350-352,426-429,438,440,442,459-462
+client/components/paseo-tool-callouts.tsx
+  h_0ae9538d78aa59 96
+client/components/tool-callouts.tsx
+  h_0ae9538d78aa59 18,50-68,805-818
+client/live-renderers.tsx
+  h_0ae9538d78aa59 22-24,153-281,479-480,482-484,529,533,543,577-580
+client/preferences.ts
+  h_0ae9538d78aa59 4-8,16-26,32-36,42-43,47,51-70,76,80,84-90,94-100,104-111
+paseo-plugin.json
+  h_0ae9538d78aa59 4
+shared/contracts.ts
+  h_0ae9538d78aa59 89-92,97-98,102,104-106,109,122-123
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "da1fe33bb18bed4976ec12f78dfd4598d0ca102f",
+  "prompts": {},
+  "humans": {
+    "h_0ae9538d78aa59": {
+      "author": "ABorakati <ABorakati@users.noreply.github.com>"
+    }
+  }
+}

@@ -1,0 +1,16 @@
+client/components/host-notice.ts
+  h_0ae9538d78aa59 1-90
+index.client.tsx
+  h_0ae9538d78aa59 8,32-33,262
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "583735612e291b665975932f5dcbf804d1b5d944",
+  "prompts": {},
+  "humans": {
+    "h_0ae9538d78aa59": {
+      "author": "ABorakati <ABorakati@users.noreply.github.com>"
+    }
+  }
+}

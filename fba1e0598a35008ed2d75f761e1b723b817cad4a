@@ -1,0 +1,82 @@
+.gitignore
+  h_0ae9538d78aa59 1-3
+LICENSE
+  h_0ae9538d78aa59 1-21
+README.md
+  h_0ae9538d78aa59 1-204
+client/components/approval-card.tsx
+  h_0ae9538d78aa59 1-360
+client/components/breathe.tsx
+  h_0ae9538d78aa59 1-51
+client/components/devicon-data.ts
+  h_0ae9538d78aa59 1-32
+client/components/embed-fonts.ts
+  h_0ae9538d78aa59 1-112
+client/components/file-type-logo.tsx
+  h_0ae9538d78aa59 1-163
+client/components/font-data.ts
+  h_0ae9538d78aa59 1-80
+client/components/frosted.ts
+  h_0ae9538d78aa59 1-49
+client/components/glyph.tsx
+  h_0ae9538d78aa59 1-472
+client/components/host-font-escape.ts
+  h_0ae9538d78aa59 1-26
+client/components/hub-callout.tsx
+  h_0ae9538d78aa59 1-474
+client/components/lobe-marks.ts
+  h_0ae9538d78aa59 1-70
+client/components/motion.tsx
+  h_0ae9538d78aa59 1-170
+client/components/paseo-tool-callouts.tsx
+  h_0ae9538d78aa59 1-519
+client/components/provider-logo.tsx
+  h_0ae9538d78aa59 1-147
+client/components/pulse-dot.tsx
+  h_0ae9538d78aa59 1-60
+client/components/reasoning-trace.tsx
+  h_0ae9538d78aa59 1-354
+client/components/syntax-highlight.tsx
+  h_0ae9538d78aa59 1-902
+client/components/task-list.tsx
+  h_0ae9538d78aa59 1-402
+client/components/theme-tokens.ts
+  h_0ae9538d78aa59 1-236
+client/components/tool-callouts.tsx
+  h_0ae9538d78aa59 1-736
+client/components/user-message.tsx
+  h_0ae9538d78aa59 1-226
+client/live-renderers.tsx
+  h_0ae9538d78aa59 1-605
+client/preferences.ts
+  h_0ae9538d78aa59 1-100
+client/prompt-images.ts
+  h_0ae9538d78aa59 1-83
+client/settings-page.tsx
+  h_0ae9538d78aa59 1-248
+index.client.tsx
+  h_0ae9538d78aa59 1-184
+index.server.ts
+  h_0ae9538d78aa59 1-6
+package-lock.json
+  h_0ae9538d78aa59 1-4048
+package.json
+  h_0ae9538d78aa59 1-20
+paseo-plugin.json
+  h_0ae9538d78aa59 1-6
+shared/contracts.ts
+  h_0ae9538d78aa59 1-269
+tsconfig.json
+  h_0ae9538d78aa59 1-17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "fba1e0598a35008ed2d75f761e1b723b817cad4a",
+  "prompts": {},
+  "humans": {
+    "h_0ae9538d78aa59": {
+      "author": "ABorakati <ABorakati@users.noreply.github.com>"
+    }
+  }
+}
