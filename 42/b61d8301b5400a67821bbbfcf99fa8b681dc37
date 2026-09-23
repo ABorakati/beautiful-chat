@@ -1,0 +1,20 @@
+README.md
+  h_0ae9538d78aa59 154,158-174,251-254
+client/components/chat-find.ts
+  h_0ae9538d78aa59 1-328
+index.client.tsx
+  h_0ae9538d78aa59 9,35-36,266
+tsconfig.json
+  h_0ae9538d78aa59 6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "42b61d8301b5400a67821bbbfcf99fa8b681dc37",
+  "prompts": {},
+  "humans": {
+    "h_0ae9538d78aa59": {
+      "author": "ABorakati <ABorakati@users.noreply.github.com>"
+    }
+  }
+}
