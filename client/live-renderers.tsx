@@ -765,6 +765,8 @@ export function LiveAssistantRenderer({
   );
   useSelectionActions(tokens, preferences.selectionActions);
   usePointerGlow(preferences.pointerGlow);
+  // A markdown image with a relative path resolves against the agent's cwd.
+  const cwd = useAgent(agentId, (agent) => agent.cwd);
 
   // Replacing the reply costs the host's footer, which the stream layout hangs
   // off an `assistant_message` item that no longer exists. Rebuild it where the
@@ -782,7 +784,12 @@ export function LiveAssistantRenderer({
       {envelope ? (
         <SystemCard envelope={envelope} tokens={tokens} />
       ) : (
-        <MarkdownView text={item.data.text} tokens={tokens} variant={preferences.markdownVariant} />
+        <MarkdownView
+          text={item.data.text}
+          tokens={tokens}
+          variant={preferences.markdownVariant}
+          cwd={cwd}
+        />
       )}
       {isTail && !envelope ? (
         <AssistantFooter text={item.data.text} at={timestamp} tokens={tokens} />
