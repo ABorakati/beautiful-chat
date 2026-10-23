@@ -9,6 +9,7 @@ import { installHostNoticeStyle } from "./client/components/host-notice";
 import { installChatFind } from "./client/components/chat-find";
 import { extractPromptImages } from "./client/prompt-images";
 import { getEnhancerPreferences } from "./client/preferences";
+import { buildToolCallPayload } from "./client/tool-call-data";
 import {
   LiveToolCallRenderer,
   LiveReasoningRenderer,
@@ -56,14 +57,10 @@ export default function contribute(client: PluginClientContext) {
             type: "plugin" as const,
             kind: "omp-tool-call",
             version: 1,
-            data: {
-              name: item.name,
-              status: item.status,
-              detail: toJsonValue(item.detail),
-              ...(item.callId ? { callId: item.callId } : {}),
-              error: item.error ? String(item.error) : null,
-              phase,
-            },
+            // `metadata` carries the host's `source`/`customType`: omp's
+            // retry, fallback and goal rows share a tool name, and the
+            // unclaimed `custom` messages are only identifiable there.
+            data: buildToolCallPayload(item, phase) as unknown as JsonValue,
           },
         ],
       };
@@ -80,6 +77,7 @@ export default function contribute(client: PluginClientContext) {
       callId: z.string().optional(),
       error: z.string().nullable().optional(),
       phase: z.string().optional(),
+      metadata: z.record(z.string(), z.unknown()).optional(),
     }),
     Component: LiveToolCallRenderer,
   });

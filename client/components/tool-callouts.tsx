@@ -12,6 +12,7 @@ import { radius } from "./theme-tokens";
 import type { ExtendedThemeTokens } from "./theme-tokens";
 import { HubCallout } from "./hub-callout";
 import { PaseoToolCallout } from "./paseo-tool-callouts";
+import { AdvisorCallout } from "./advisor-callout";
 import { SyntaxHighlightBlock, renderTerminalOutput } from "./syntax-highlight";
 import { FileTypeLogo } from "./file-type-logo";
 import { ImagePreview } from "./image-preview";
@@ -29,12 +30,13 @@ function getToolIconName(tool: string): string {
   if (tool === "bash" || tool === "shell") return "Terminal";
   if (tool === "read") return "Book";
   if (tool === "edit" || tool === "write") return "Pencil";
-  if (tool === "thinking") return "Brain";
+  if (tool === "thinking" || tool === "advisor") return "Brain";
   if (tool === "eval") return "Play";
   if (tool === "ask") return "HelpCircle";
   if (tool === "mcp") return "Plug";
   if (tool === "task") return "Bot";
   if (tool === "hub") return "Radio";
+  if (tool === "note") return "MessageSquare";
   return "Wrench";
 }
 
@@ -78,7 +80,9 @@ export function ToolCallout({
     (data.tool === "ask" && Boolean(data.askOptions)) ||
     (data.tool === "task" && Boolean(data.subagent)) ||
     (data.tool === "hub" && Boolean(data.hub)) ||
-    (data.tool === "paseo" && Boolean(data.paseo));
+    (data.tool === "paseo" && Boolean(data.paseo)) ||
+    (data.tool === "advisor" && Boolean(data.advisor)) ||
+    (data.tool === "note" && Boolean(data.text));
 
   const filePath = data.filePath;
   // A tool without a path, or a host that cannot reveal one, leaves the file
@@ -239,6 +243,15 @@ export function ToolCallout({
           fontSize: 11,
           color: tokens.foregroundSubtle,
           fontStyle: "italic",
+        },
+        // Prose the host filed under `plain_text` — a wait result, a think, an
+        // opaque device tool — belongs in the reading face, not in the
+        // terminal one.
+        noteText: {
+          fontFamily: tokens.fontUi,
+          fontSize: 12.5,
+          lineHeight: 19,
+          color: tokens.foregroundMuted,
         },
         // Ask tool options
         askContainer: {
@@ -832,6 +845,14 @@ export function ToolCallout({
           {data.tool === "paseo" && data.paseo && (
             <PaseoToolCallout data={data.paseo} tokens={tokens} />
           )}
+          {data.tool === "advisor" && data.advisor && (
+            <AdvisorCallout data={data.advisor} tokens={tokens} />
+          )}
+          {data.tool === "note" && data.text ? (
+            <Text selectable style={styles.noteText}>
+              {data.text}
+            </Text>
+          ) : null}
 
           {!hasTypedBody && (
             <View style={styles.terminalWindow}>

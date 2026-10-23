@@ -82,7 +82,15 @@ export type ToolCallKind =
   | "hub"
   | "paseo"
   | "ast_grep"
-  | "lsp";
+  | "lsp"
+  /** An omp advisor note: prose the host flattened out of a `custom` message. */
+  | "advisor"
+  /** One row of omp telemetry: retry, fallback, goal. Drawn without tool chrome. */
+  | "status"
+  /** An omp `custom` message: a relayed message or a supervised-process report. */
+  | "system"
+  /** Any other prose the host filed under `detail.type: "plain_text"`. */
+  | "note";
 
 /**
  * The hub tool answers with a text block plus a typed `details` record, and the
@@ -386,6 +394,45 @@ export interface GitHubToolData {
   text?: string;
 }
 
+/**
+ * One advisor note, read back out of the host's flattened `plain_text`.
+ *
+ * The host knows the structured notes but passes only the formatted string, so
+ * severity and the advisor name exist here only when the text carried them.
+ */
+export interface AdvisorNote {
+  severity?: "nit" | "concern" | "blocker";
+  advisor?: string;
+  text: string;
+}
+
+/** Everything an advisor card draws, plus the counts the host reported. */
+export interface AdvisorData {
+  notes: AdvisorNote[];
+  noteCount: number;
+  blockerCount: number;
+}
+
+/** One label/value pair on a telemetry row. */
+export interface StatusChip {
+  label: string;
+  value: string;
+}
+
+/**
+ * An omp telemetry row: a retry, a model fallback, or a goal update.
+ *
+ * `source` is the host's `metadata.source`, the only field that separates the
+ * two fallback phases and the two retry phases — they share a tool name.
+ */
+export interface StatusLineData {
+  source: string;
+  tone: "neutral" | "success" | "danger";
+  chips: StatusChip[];
+  /** The host's prose, kept when it says more than the chips (errors, goals). */
+  text?: string;
+}
+
 export interface ToolCalloutData {
   id: string;
   tool: ToolCallKind;
@@ -430,6 +477,15 @@ export interface ToolCalloutData {
   thinking?: ThinkingToolData;
   paseo?: PaseoToolData;
   github?: GitHubToolData;
+  /** Present on an advisor card. */
+  advisor?: AdvisorData;
+  /** Present on a telemetry row, which the renderer draws without tool chrome. */
+  telemetry?: StatusLineData;
+  /**
+   * The host's `detail.text` for a `plain_text` call. A `note` card draws it as
+   * prose; a `system` card hands it to the envelope parser first.
+   */
+  text?: string;
 }
 
 /**

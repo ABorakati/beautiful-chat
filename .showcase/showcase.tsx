@@ -28,6 +28,9 @@ import { AssistantFooter } from "../client/components/turn-footer";
 import { MarkdownView } from "../client/components/markdown/markdown-view";
 import { parseSystemEnvelope } from "../client/system-envelope";
 import { installPointerGlow } from "../client/components/glow";
+import { LiveToolCallRenderer } from "../client/live-renderers";
+import { buildToolCallPayload } from "../client/tool-call-data";
+import type { ToolCallSourceItem } from "../client/tool-call-data";
 import type { ToolCalloutData } from "../shared/contracts";
 
 const DARK = {
@@ -686,6 +689,201 @@ function Hero() {
   );
 }
 
+/**
+ * Synthetic rows, fed to the renderer exactly as the host emits them.
+ *
+ * These fixtures are raw `tool_call` items — the shape `@getpaseo/server`
+ * produces for an advisor message, a retry event and an unclaimed `custom`
+ * message — and they go through the same `buildToolCallPayload` →
+ * `LiveToolCallRenderer` path the running plugin uses. Hand-built
+ * `ToolCalloutData` would keep the screenshot green even if the mapping that
+ * reads `detail.text` or `metadata` broke.
+ */
+const advisorItem: ToolCallSourceItem = {
+  name: "advisor",
+  status: "completed",
+  callId: "omp-advisor:demo-1",
+  detail: {
+    type: "plain_text",
+    label: "Advisor · 3 notes · 1 blocker",
+    text: [
+      "[blocker] The release script overwrites the archive before it verifies the upload, so a failed transfer leaves no image to retry from.",
+      "[concern] `npm ci` was dropped from build.sh; a fresh clone has no node_modules and the first build fails.",
+      "[nit] The status line says “built” even when the typecheck step did not run.",
+    ].join("\n\n"),
+    icon: "brain",
+  },
+  metadata: { synthetic: true, source: "omp_advisor", noteCount: 3, blockerCount: 1 },
+};
+
+const longAdvisorItem: ToolCallSourceItem = {
+  name: "advisor",
+  status: "completed",
+  callId: "omp-advisor:demo-2",
+  detail: {
+    type: "plain_text",
+    label: "Advisor · 8 notes · 1 blocker",
+    text: [
+      "[blocker] Webhooks are delivered before the transaction commits, so a consumer can read a row that does not exist yet.",
+      "[concern] The retry loop has no jitter; three workers back off in lockstep.",
+      "[concern] Errors are logged at info level, which hides them behind the chatty access log.",
+      "[nit] The timeout is a bare 30000 rather than a named constant.",
+      "[nit] Two helpers differ only in the order of their arguments.",
+      "[nit] The comment above `flush` describes the old implementation.",
+      "[nit] A test name says “returns null” but asserts a throw.",
+      "[nit] The changelog entry is longer than the change.",
+    ].join("\n\n"),
+    icon: "brain",
+  },
+  metadata: { synthetic: true, source: "omp_advisor", noteCount: 8, blockerCount: 1 },
+};
+
+const fallbackAppliedItem: ToolCallSourceItem = {
+  name: "omp_retry_fallback",
+  status: "completed",
+  callId: "omp-retry-fallback:applied",
+  detail: {
+    type: "plain_text",
+    label: "OMP fallback applied for main",
+    text: "anthropic/claude-sonnet-4 -> moonshot/kimi-k2",
+    icon: "sparkles",
+  },
+  metadata: {
+    synthetic: true,
+    source: "omp_retry_fallback_applied",
+    role: "main",
+    from: "anthropic/claude-sonnet-4",
+    to: "moonshot/kimi-k2",
+  },
+};
+
+const fallbackSucceededItem: ToolCallSourceItem = {
+  name: "omp_retry_fallback",
+  status: "completed",
+  callId: "omp-retry-fallback:succeeded",
+  detail: {
+    type: "plain_text",
+    label: "OMP fallback succeeded for main",
+    text: "Using moonshot/kimi-k2",
+    icon: "sparkles",
+  },
+  metadata: {
+    synthetic: true,
+    source: "omp_retry_fallback_succeeded",
+    role: "main",
+    model: "moonshot/kimi-k2",
+  },
+};
+
+const autoRetryItem: ToolCallSourceItem = {
+  name: "omp_auto_retry",
+  status: "running",
+  callId: "omp-auto-retry:1",
+  detail: {
+    type: "plain_text",
+    label: "OMP retry 1/3",
+    text: "Retrying in 1.5s: 529 overloaded",
+    icon: "sparkles",
+  },
+  metadata: {
+    synthetic: true,
+    source: "omp_auto_retry_start",
+    attempt: 1,
+    maxAttempts: 3,
+    delayMs: 1500,
+  },
+};
+
+const goalItem: ToolCallSourceItem = {
+  name: "omp_goal_updated",
+  status: "completed",
+  callId: "omp-goal:7",
+  detail: {
+    type: "plain_text",
+    label: "OMP goal active",
+    text: "Keep the typecheck green while the diff RPC is unified.",
+    icon: "brain",
+  },
+  metadata: { synthetic: true, source: "omp_goal_updated", goalId: "goal-7", goalStatus: "active" },
+};
+
+const launchItem: ToolCallSourceItem = {
+  name: "launch-completion",
+  status: "completed",
+  callId: "omp-custom-1",
+  detail: {
+    type: "plain_text",
+    text: "Supervised process mihomo-prod failed with exit code 1.",
+  },
+  metadata: {
+    synthetic: true,
+    customType: "launch-completion",
+    details: { daemons: [{ name: "mihomo-prod", status: "failed", exitCode: 1 }] },
+  },
+};
+
+const ircItem: ToolCallSourceItem = {
+  name: "irc:incoming",
+  status: "completed",
+  callId: "omp-custom-2",
+  detail: {
+    type: "plain_text",
+    text: [
+      "<irc>",
+      "Incoming IRC message from agent `BuildTui`:",
+      "",
+      "Typecheck is green after the parse fix, and the two extra rows are in the snapshot.",
+    ].join("\n"),
+  },
+  metadata: {
+    synthetic: true,
+    customType: "irc:incoming",
+    details: { from: "BuildTui", id: "42", message: "Typecheck is green after the parse fix." },
+  },
+};
+
+const waitItem: ToolCallSourceItem = {
+  name: "wait",
+  status: "completed",
+  callId: "call-wait",
+  detail: {
+    type: "plain_text",
+    label: "task completed: bg_13",
+    text: "742 lines of shell reviewed; one malformed JSON line found in `list --json`.",
+  },
+};
+
+const SHOWCASE_NOW = new Date("2026-09-15T22:45:00Z");
+
+/** One raw host item, through the plugin's real payload and renderer. */
+function HostToolCall({ item }: { item: ToolCallSourceItem }) {
+  const data = buildToolCallPayload(item, "complete");
+  return (
+    <LiveToolCallRenderer
+      agentId="showcase"
+      item={{ type: "plugin", kind: "omp-tool-call", version: 1, data }}
+      timestamp={SHOWCASE_NOW}
+      theme={{ colors: DARK }}
+      host={{ id: "local", label: "Local" }}
+      layout={{ compact: false, platform: "web" }}
+    />
+  );
+}
+
+function SyntheticRows() {
+  return (
+    <View style={{ gap: 12 }}>
+      <HostToolCall item={fallbackAppliedItem} />
+      <HostToolCall item={fallbackSucceededItem} />
+      <HostToolCall item={autoRetryItem} />
+      <HostToolCall item={goalItem} />
+      <HostToolCall item={launchItem} />
+      <HostToolCall item={ircItem} />
+      <HostToolCall item={waitItem} />
+    </View>
+  );
+}
+
 function Showcase() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24, backgroundColor: "#000" }}>
@@ -694,6 +892,13 @@ function Showcase() {
       </Shot>
       <Shot id="shot-thread">
         <Thread />
+      </Shot>
+      <Shot id="shot-advisor">
+        <HostToolCall item={advisorItem} />
+        <HostToolCall item={longAdvisorItem} />
+      </Shot>
+      <Shot id="shot-synthetic">
+        <SyntheticRows />
       </Shot>
       <Shot id="shot-tool-bash">
         <ToolCallout data={bash} tokens={tokens} />

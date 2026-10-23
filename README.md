@@ -1,8 +1,8 @@
 # Beautiful Chat
 
 A Paseo plugin that redraws the Oh My Pi (OMP) chat stream: tool calls, reasoning, prompts, approvals,
-and checklists. It replaces the host rendering of OMP timeline items with typed, syntax-aware cards
-that follow the active Paseo theme.
+checklists, advisor notes, and retry/fallback telemetry. It replaces the host rendering of OMP
+timeline items with typed, syntax-aware cards that follow the active Paseo theme.
 
 ![A prompt, a tool call, a finished background job, and the reply that closes the turn](images/hero.png)
 
@@ -100,6 +100,35 @@ they carry no buttons, because a plugin cannot restart or cancel anything.
 Paseo's own mark leads the card, and the created agent's provider carries its brand mark.
 
 ![Paseo tool call](docs/images/paseo.png)
+
+### Advisor notes
+
+omp's advisor speaks as a `custom` message. Paseo rewrites it as a synthetic tool call whose
+`detail.text` is the notes joined by blank lines, each prefixed with `[severity]` and, when known,
+`[advisor]`; the structured notes never reach plugin code, so those prefixes are the only source
+for per-note weight. The card keeps the advisor's own order, badges every note (`nit`, `concern`,
+`blocker`), rails a blocker in the danger colour, opens expanded, and clips past six notes behind
+**Show all N notes**. The counts come from `metadata.noteCount` and `metadata.blockerCount`.
+
+![Advisor notes](docs/images/advisor.png)
+
+### Retry, fallback, goals, and relayed messages
+
+`retry_fallback_applied`, `retry_fallback_succeeded`, `auto_retry_start`, `auto_retry_end`, and
+`goal_updated` arrive as synthetic tool calls that share one name per pair, so the row switches on
+`metadata.source` rather than on the tool name. It is a single line — the host's label, then chips
+for the structured half of `metadata` (`role`, `from → to`, `attempt`, `retry in`, `goal`), with
+the error text trailing where the event carries one. No tool chrome: nothing was called and there
+is nothing to open.
+
+omp's other `custom` messages take the same route. A supervised-process report and an IRC relay
+draw as the standalone card the `error` rows already use, parsed from the message text; a text the
+plugin cannot read still shows its words in a prose card.
+
+A `<system-notice>` job completion is the exception: the host turns it into a `notification` item,
+and the plugin SDK accepts no transformer for that item type, so those rows keep the host's styling.
+
+![Retry, fallback, relayed messages, and a prose result](docs/images/synthetic.png)
 
 ---
 
@@ -289,8 +318,10 @@ Rebuild the screenshots after a visual change:
 
 ```bash
 esbuild .showcase/showcase.tsx --bundle --outfile=.showcase/showcase.js --jsx=automatic \
+  --define:global=globalThis \
   --alias:react-native=react-native-web \
-  --alias:@getpaseo/plugin/client/react-native=./.showcase/shims/plugin-react-native.tsx
+  --alias:@getpaseo/plugin/client/react-native=./.showcase/shims/plugin-react-native.tsx \
+  --alias:@getpaseo/plugin/client=./.showcase/shims/plugin-client.tsx
 ```
 
 Then serve `.showcase/` and capture each `#shot-*` element.
