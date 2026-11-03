@@ -81,8 +81,7 @@ export type ToolCallKind =
   | "ask"
   | "hub"
   | "paseo"
-  | "ast_grep"
-  | "lsp";
+  | "generic";
 
 /**
  * The hub tool answers with a text block plus a typed `details` record, and the
@@ -400,6 +399,13 @@ export interface ToolCalloutData {
   language?: string;
   diff?: string;
   output?: string;
+  /**
+   * A tool the plugin has no typed card for keeps its raw call, so the generic
+   * card can draw what the host would. `rawOutput` is JSON-serialisable and
+   * capped, see `capRawPayload`.
+   */
+  input?: unknown;
+  rawOutput?: unknown;
   cells?: EvalCell[];
   askOptions?: Array<{
     id: string;

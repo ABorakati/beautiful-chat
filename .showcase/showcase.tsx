@@ -265,6 +265,15 @@ const mcp: ToolCalloutData = {
   },
 };
 
+const genericTool: ToolCalloutData = {
+  id: "generic",
+  tool: "generic",
+  title: "ToolSearch",
+  status: "completed",
+  input: { query: "select:mcp__jina-reader__read_url", max_results: 3 },
+  rawOutput: { output: [{ tool_name: "mcp__jina-reader__read_url", type: "tool_reference" }] },
+};
+
 const evalCall: ToolCalloutData = {
   id: "eval",
   tool: "eval",
@@ -723,6 +732,9 @@ function Showcase() {
       </Shot>
       <Shot id="shot-tool-mcp">
         <ToolCallout data={mcp} tokens={tokens} />
+      </Shot>
+      <Shot id="shot-tool-generic">
+        <ToolCallout data={genericTool} tokens={tokens} />
       </Shot>
       <Shot id="shot-tool-eval">
         <ToolCallout data={evalCall} tokens={tokens} />

@@ -188,8 +188,10 @@ A directory path opens that directory. A path the daemon cannot stat does nothin
 
 ## Unmapped output
 
-A tool the plugin has no typed card for still shows its output in the terminal frame, and a call
-that printed nothing says so. No card renders an empty panel.
+A tool the plugin has no typed card for, such as `ToolSearch`, is drawn as a generic card. It shows
+the call's input and its output as pretty JSON, or as plain text when the value is a string, and
+long payloads are cut off at a sensible length. A call that returned nothing says "No output.".
+Only a real shell call says "Command completed without output.". No card renders an empty panel.
 
 The link cannot open Paseo's own file editor: see the first limitation below.
 

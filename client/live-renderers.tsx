@@ -173,6 +173,36 @@ export function extractEvalDuration(output: unknown): number | undefined {
   return typeof value === "number" ? value : undefined;
 }
 
+/**
+ * The most characters of a raw payload a generic card carries. A search or
+ * listing tool can answer with megabytes, and the card only ever shows a
+ * screenful of it.
+ */
+const RAW_PAYLOAD_LIMIT = 20_000;
+
+/**
+ * Keeps a raw call payload JSON-serialisable and bounded. Anything that does
+ * not stringify (a cycle, a bigint) or that is too long becomes truncated text
+ * rather than throwing inside a render.
+ */
+function capRawPayload(value: unknown): unknown {
+  if (value === undefined || value === null || value === "") return undefined;
+  if (typeof value === "string") {
+    return value.length > RAW_PAYLOAD_LIMIT
+      ? `${value.slice(0, RAW_PAYLOAD_LIMIT)}\n… truncated`
+      : value;
+  }
+  try {
+    const text = JSON.stringify(value, null, 2);
+    if (text === undefined) return undefined;
+    return text.length > RAW_PAYLOAD_LIMIT
+      ? `${text.slice(0, RAW_PAYLOAD_LIMIT)}\n… truncated`
+      : value;
+  } catch {
+    return String(value).slice(0, RAW_PAYLOAD_LIMIT);
+  }
+}
+
 function asString(value: unknown): string | undefined {
   return typeof value === "string" && value.length > 0 ? value : undefined;
 }
@@ -460,7 +490,7 @@ export function LiveToolCallRenderer({
             : undefined);
     const durationMs =
       typeof detail.durationMs === "number" ? detail.durationMs : extractEvalDuration(output);
-    let toolKind: ToolCallKind = "bash";
+    let toolKind: ToolCallKind = "generic";
     let hub: HubData | undefined;
     let mcp: McpToolData | undefined;
     let subagent: ToolCalloutData["subagent"];
@@ -567,9 +597,12 @@ export function LiveToolCallRenderer({
           : languageFromPath(filePath),
       // A github card reads its typed record; leaving `code` and `output` set
       // would draw the request and the reply a second time.
-      code: toolKind === "github" ? undefined : code,
+      code: toolKind === "github" || toolKind === "generic" ? undefined : code,
       diff,
-      output: toolKind === "github" || evalCells.length > 0 ? undefined : outputText,
+      output:
+        toolKind === "github" || toolKind === "generic" || evalCells.length > 0
+          ? undefined
+          : outputText,
       cells: evalCells.length > 0 ? evalCells : undefined,
       askOptions: askOptions.length > 0 ? askOptions : undefined,
       askAnswer: askAnswer.length > 0 ? askAnswer : undefined,
@@ -580,6 +613,13 @@ export function LiveToolCallRenderer({
       mcp,
       paseo,
       github,
+      // Only the generic card draws the raw call, so no typed card shows a
+      // payload twice.
+      input:
+        toolKind === "generic"
+          ? capRawPayload(detail.input ?? detail.arguments ?? detail.args)
+          : undefined,
+      rawOutput: toolKind === "generic" ? capRawPayload(output) : undefined,
     };
   }, [data]);
 

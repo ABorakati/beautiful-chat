@@ -22,6 +22,11 @@ import { selectableSurface, unselectable } from "./selection";
 import { selectionCodeText, selectionSurface } from "./selection-actions";
 import type { ToolCalloutData } from "../../shared/contracts";
 
+/** A string is drawn as it is; anything else as pretty JSON. */
+function formatRawPayload(value: unknown): string {
+  return typeof value === "string" ? value : JSON.stringify(value, null, 2);
+}
+
 function getToolIconName(tool: string): string {
   if (tool === "git") return "Git";
   if (tool === "paseo") return "Paseo";
@@ -74,6 +79,7 @@ export function ToolCallout({
     data.tool === "write" ||
     data.tool === "edit" ||
     data.tool === "eval" ||
+    data.tool === "generic" ||
     (data.tool === "mcp" && Boolean(data.mcp)) ||
     (data.tool === "ask" && Boolean(data.askOptions)) ||
     (data.tool === "task" && Boolean(data.subagent)) ||
@@ -454,7 +460,7 @@ export function ToolCallout({
             <Glyph name={getToolIconName(data.tool)} size={13} color={iconColor} />
           </Breathe>
           <Text selectable style={styles.toolPill}>
-            {data.tool}
+            {data.tool === "generic" ? "tool" : data.tool}
           </Text>
           {data.filePath ? (
             <Breathe depth={1.08} durationMs={1800}>
@@ -831,6 +837,46 @@ export function ToolCallout({
           {data.tool === "hub" && data.hub && <HubCallout data={data.hub} tokens={tokens} />}
           {data.tool === "paseo" && data.paseo && (
             <PaseoToolCallout data={data.paseo} tokens={tokens} />
+          )}
+
+          {data.tool === "generic" && (
+            <View style={styles.mcpContainer}>
+              <View style={{ gap: 4 }}>
+                <Text selectable style={styles.mcpSectionTitle}>
+                  Input
+                </Text>
+                {data.input === undefined ? (
+                  <Text selectable style={styles.silentCommandText}>
+                    No input.
+                  </Text>
+                ) : (
+                  <SyntaxHighlightBlock
+                    code={formatRawPayload(data.input)}
+                    language={typeof data.input === "string" ? "typescript" : "json"}
+                    tokens={tokens}
+                    compact
+                  />
+                )}
+              </View>
+
+              <View style={{ gap: 4, marginTop: 4 }}>
+                <Text selectable style={styles.mcpSectionTitle}>
+                  Output
+                </Text>
+                {data.rawOutput === undefined ? (
+                  <Text selectable style={styles.silentCommandText}>
+                    {isRunning ? "Waiting for output…" : "No output."}
+                  </Text>
+                ) : (
+                  <SyntaxHighlightBlock
+                    code={formatRawPayload(data.rawOutput)}
+                    language={typeof data.rawOutput === "string" ? "typescript" : "json"}
+                    tokens={tokens}
+                    compact
+                  />
+                )}
+              </View>
+            </View>
           )}
 
           {!hasTypedBody && (
