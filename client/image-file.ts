@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useRpc } from "@getpaseo/plugin/client";
+import { stripSelector } from "../shared/file-rpc";
 import { imageRpc } from "../shared/image-rpc";
 
 /** What the daemon side could tell the client about one image file. */
@@ -29,16 +30,6 @@ const IMAGE_EXTENSIONS = new Set([
   "ico",
   "svg",
 ]);
-
-/** Strips the selector a tool appends to a path, such as `shot.png:1-20`. */
-function stripSelector(path: string): string {
-  const trimmed = path.trim();
-  const drive = /^[a-zA-Z]:[\\/]/.test(trimmed);
-  const head = drive ? trimmed.slice(0, 3) : "";
-  const tail = drive ? trimmed.slice(3) : trimmed;
-  const cut = tail.search(/[\s:?#]/);
-  return cut === -1 ? trimmed : head + tail.slice(0, cut);
-}
 
 /** True when this path names a file the chat can draw rather than tokenise. */
 export function isImagePath(path: string | undefined): boolean {
