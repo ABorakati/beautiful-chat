@@ -65,12 +65,31 @@ function plural(count: number, noun: string): string {
  * insertions and deletions. A failed call already carries its exit code in the
  * header, and a kind with no simple measure shows nothing.
  */
+/**
+ * Added and removed lines in a unified diff. The `---` and `+++` file headers
+ * are skipped by position rather than by prefix: inside a hunk, a removed line
+ * whose text starts with `--` (a SQL or Lua comment) also begins `---`.
+ */
+function countDiffChanges(diff: string): { added: number; removed: number } {
+  const lines = diff.split("\n");
+  const hasHunks = lines.some((line) => line.startsWith("@@"));
+  let inHunk = !hasHunks;
+  let added = 0;
+  let removed = 0;
+  for (const line of lines) {
+    if (line.startsWith("diff ")) inHunk = false;
+    else if (line.startsWith("@@")) inHunk = true;
+    else if (!inHunk) continue;
+    else if (line.startsWith("+")) added += 1;
+    else if (line.startsWith("-")) removed += 1;
+  }
+  return { added, removed };
+}
+
 function foldedSummary(data: ToolCalloutData): string | undefined {
   if (data.status !== "completed") return undefined;
   if (data.tool === "edit" && data.diff) {
-    const lines = data.diff.split("\n");
-    const added = lines.filter((line) => line.startsWith("+") && !line.startsWith("+++")).length;
-    const removed = lines.filter((line) => line.startsWith("-") && !line.startsWith("---")).length;
+    const { added, removed } = countDiffChanges(data.diff);
     return `+${added} \u2212${removed}`;
   }
   if (data.tool === "write" || data.tool === "read") {

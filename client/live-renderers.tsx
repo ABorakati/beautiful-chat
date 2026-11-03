@@ -166,6 +166,24 @@ export function extractContentText(container: Record<string, unknown>): string |
   return undefined;
 }
 
+/**
+ * The readable message in a failed call's `error`, which each provider shapes
+ * its own way. Claude hands over the raw tool result with the text in
+ * `content`. `String()` on that record printed "[object Object]".
+ */
+export function extractErrorText(error: unknown): string | null {
+  if (!error) return null;
+  if (typeof error === "string") return error;
+  if (typeof error !== "object") return String(error);
+  const record = error as Record<string, unknown>;
+  const text =
+    asString(record.content) ??
+    asString(record.message) ??
+    asString(record.text) ??
+    extractContentText(record);
+  return text ?? JSON.stringify(error);
+}
+
 /** Eval times the whole run and reports it beside the cells. */
 export function extractEvalDuration(output: unknown): number | undefined {
   if (!output || typeof output !== "object") return undefined;
@@ -506,6 +524,12 @@ export function LiveToolCallRenderer({
           (output && typeof output === "object"
             ? extractContentText(output as Record<string, unknown>)
             : undefined);
+    // A failed call can carry its message beside the detail rather than in it,
+    // which left the card saying the command printed nothing.
+    const errorText =
+      data.status === "failed" && typeof data.error === "string" && data.error.trim()
+        ? data.error
+        : undefined;
     const durationMs =
       typeof detail.durationMs === "number" ? detail.durationMs : extractEvalDuration(output);
     let toolKind: ToolCallKind = "generic";
@@ -622,7 +646,7 @@ export function LiveToolCallRenderer({
       output:
         toolKind === "github" || toolKind === "generic" || evalCells.length > 0
           ? undefined
-          : outputText,
+          : outputText || errorText,
       cells: evalCells.length > 0 ? evalCells : undefined,
       askOptions: askOptions.length > 0 ? askOptions : undefined,
       askAnswer: askAnswer.length > 0 ? askAnswer : undefined,
@@ -639,7 +663,7 @@ export function LiveToolCallRenderer({
         toolKind === "generic"
           ? capRawPayload(detail.input ?? detail.arguments ?? detail.args)
           : undefined,
-      rawOutput: toolKind === "generic" ? capRawPayload(output) : undefined,
+      rawOutput: toolKind === "generic" ? (capRawPayload(output) ?? errorText) : undefined,
     };
   }, [data]);
 
@@ -827,6 +851,8 @@ export function LiveAssistantRenderer({
   useSelectionActions(tokens, preferences.selectionActions);
   usePointerGlow(preferences.pointerGlow);
   useFrostedGlass(preferences.frostedGlass);
+  // A markdown image with a relative path resolves against the agent's cwd.
+  const cwd = useAgent(agentId, (agent) => agent.cwd);
 
   // Replacing the reply costs the host's footer, which the stream layout hangs
   // off an `assistant_message` item that no longer exists. Rebuild it where the
@@ -849,6 +875,7 @@ export function LiveAssistantRenderer({
           tokens={tokens}
           variant={preferences.markdownVariant}
           foldCodeAfter={preferences.codeFoldLimit}
+          cwd={cwd}
         />
       )}
       {isTail && !envelope ? (
