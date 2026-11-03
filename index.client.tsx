@@ -16,6 +16,7 @@ import {
   LiveUserMessageRenderer,
   LiveNoticeRenderer,
   LiveAssistantRenderer,
+  extractErrorText,
 } from "./client/live-renderers";
 
 type JsonValue = boolean | null | number | string | JsonValue[] | { [key: string]: JsonValue };
@@ -61,7 +62,7 @@ export default function contribute(client: PluginClientContext) {
               status: item.status,
               detail: toJsonValue(item.detail),
               ...(item.callId ? { callId: item.callId } : {}),
-              error: item.error ? String(item.error) : null,
+              error: extractErrorText(item.error),
               phase,
             },
           },
