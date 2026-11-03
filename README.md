@@ -150,20 +150,34 @@ Devicon brand marks, and the file-manager link.
 
 ![Settings screen](docs/images/settings.png)
 
-| Setting                | Effect                                                             |
-| ---------------------- | ------------------------------------------------------------------ |
-| Accent colour          | Follow the Paseo theme, or pick Jade, Violet, Amber, or Rose.      |
-| Interface font         | Embedded Inter, or the system interface face.                      |
-| Code glyphs            | Iosevka with ligatures, or literal glyphs.                         |
-| Frosted glass          | Blur card surfaces, or paint them solid.                           |
-| Enhanced prompt bubble | Off hands prompts back to Paseo, whose bubble shows pasted images. |
-| Assistant markdown     | Off hands replies back to Paseo's own markdown renderer.           |
-| Collapse when finished | Shell, write, edit, read, and other tool cards fold once done.     |
-| Collapse length        | Fold every finished card, or only those over 10, 20, or 50 lines.  |
-| Open while running     | Off keeps cards folded while their call is still running.          |
-| Fold reasoning         | Off keeps every reasoning summary open.                            |
-| Long code blocks       | Fold reply code blocks over 30 or 60 lines to a 10-line preview.   |
-| Long prompts           | Fold prompts over 15 or 30 lines to an 8-line preview.             |
+| Group | Setting | Effect |
+| --- | --- | --- |
+| Appearance | Accent colour | Follow the Paseo theme, or choose Jade, Violet, Amber, or Rose. |
+| Appearance | Use Paseo fonts | Use Paseo's interface and code fonts on desktop and web. Empty font settings keep your plugin font choices. |
+| Appearance | Interface font | Choose Inter or the system font. A font set in Paseo takes priority when Use Paseo fonts is on. |
+| Appearance | Code glyphs | Use Iosevka with ligatures, or show each symbol separately. A code font set in Paseo takes priority when Use Paseo fonts is on. |
+| Appearance | Line spacing | Keep the original spacing with Compact. Balanced adds 15% and Spacious adds 30%. |
+| Appearance | Frosted glass | Blur card backgrounds where supported, or use solid surfaces. |
+| Appearance | Pointer glow | Show a light under the pointer on cards on desktop and web. Reduced motion disables this effect. |
+| Replies | Assistant markdown | Style headings, lists, code, and images, including local files through the daemon. Disable this setting for Mermaid diagrams and Paseo's file-path links. |
+| Replies | Markdown style | Choose Document, Compact, or Terminal. This choice is disabled when Assistant markdown is off. |
+| Replies | Long code blocks | Fold reply code blocks over 30 or 60 lines to a 10-line preview. Copy keeps the whole block. |
+| Prompts | Enhanced prompt bubble | Show the plugin's prompt bubble without pasted images. Disable this setting for Paseo's bubble with images. |
+| Prompts | Long prompts | Fold prompts over 15 or 30 lines to an 8-line preview. Paseo's own bubble does not fold. |
+| Timeline | Collapse when finished | Choose shell, write, edit, read, and other tool groups independently. Failed calls and agent questions stay open. |
+| Timeline | Collapse length | Fold every selected card, or only cards over 10, 20, or 50 lines. |
+| Timeline | Open while running | Open tool cards while their calls run, then apply the collapse rules. Disable this setting to apply those rules from the start. |
+| Timeline | Fold reasoning summaries | Fold summaries after completion. Disable this setting to keep every summary open. |
+| Interaction | Selection actions | Select text to show Copy and Add to chat on desktop and web. Add to chat inserts a quote or code block. |
+
+The live preview uses the real prompt, reasoning, tool, reply, and checklist components with sample data.
+It appears beside the settings at widths of 860 px or more, and above them on narrower screens.
+On desktop and web, the page uses the scroll pane width, up to 1200 px, with a sticky preview column.
+
+**Use Paseo fonts reads unsupported, private host state.** It reads `uiFontFamily` and `monoFontFamily`
+from the `@paseo:app-settings` record in `localStorage`. The plugin SDK does not expose these settings
+in 0.8 or 0.15. A host change can break this feature without warning. It has no effect on native,
+which has no `localStorage`.
 
 ---
 

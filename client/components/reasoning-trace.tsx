@@ -214,7 +214,7 @@ export function ReasoningTrace({ data, tokens, defaultExpanded = false }: Reason
           fontFamily: tokens.fontUi,
           marginTop: 6,
           fontSize: 12,
-          lineHeight: 18,
+          lineHeight: 18 * tokens.leading,
           color: tokens.foregroundMuted,
         },
         footer: {

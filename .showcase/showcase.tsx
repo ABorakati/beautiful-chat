@@ -44,15 +44,7 @@ const DARK = {
   statusDanger: "#f2555a",
 };
 
-const PREFERENCES = {
-  accent: "host" as const,
-  uiFont: "inter" as const,
-  codeFont: "code" as const,
-  frostedGlass: true,
-  enhancedUserBubble: true,
-};
-
-const tokens = buildThemeTokens(DARK, PREFERENCES);
+const tokens = buildThemeTokens(DARK);
 
 const bash: ToolCalloutData = {
   id: "bash",
@@ -805,15 +797,13 @@ function Showcase() {
           onRevealFile={() => {}}
         />
       </Shot>
-      <Shot id="shot-settings" width={760}>
-        <View style={{ height: 880 }}>
-          <BeautifulChatSettingsPage
-            theme={{ colors: DARK }}
-            host={{ id: "local", label: "Local" }}
-            layout={{ compact: false, platform: "web" }}
-          />
-        </View>
-      </Shot>
+      <div id="shot-settings" style={{ width: "100vw", maxWidth: 1300, backgroundColor: DARK.surface0 }}>
+        <BeautifulChatSettingsPage
+          theme={{ colors: DARK }}
+          host={{ id: "local", label: "Local" }}
+          layout={{ compact: false, platform: "web" }}
+        />
+      </div>
     </div>
   );
 }

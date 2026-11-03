@@ -110,7 +110,7 @@ export function SystemCard({ envelope, tokens }: SystemCardProps): React.ReactEl
         prose: {
           fontFamily: tokens.fontUi,
           fontSize: 12,
-          lineHeight: 18,
+          lineHeight: 18 * tokens.leading,
           color: tokens.foreground,
         },
       }),

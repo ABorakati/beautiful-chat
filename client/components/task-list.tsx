@@ -231,7 +231,7 @@ export function TaskList({ data, tokens, onToggleTask }: TaskListProps) {
         taskTitle: {
           fontFamily: tokens.fontUi,
           fontSize: 13,
-          lineHeight: 18,
+          lineHeight: 18 * tokens.leading,
           color: tokens.foreground,
         },
         taskTitleCompleted: {
@@ -271,7 +271,7 @@ export function TaskList({ data, tokens, onToggleTask }: TaskListProps) {
           fontFamily: tokens.fontUi,
           fontSize: 12,
           color: tokens.warning,
-          lineHeight: 16,
+          lineHeight: 16 * tokens.leading,
         },
       }),
     [tokens],
@@ -356,7 +356,7 @@ export function TaskList({ data, tokens, onToggleTask }: TaskListProps) {
                   ) : isBlocked ? (
                     <Glyph name="AlertCircle" size={13} color={tokens.warning} />
                   ) : (
-                    <Glow active={isActive} color={tokens.accent} size={22}>
+                    <Glow active={isActive} color={tokens.accent} size={16}>
                       <Glyph
                         name="Circle"
                         size={13}
