@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo, useState } from "react";
 import { View, Text, Pressable, StyleSheet } from "react-native";
-import { copyText } from "@getpaseo/plugin/client/react-native";
+import { copyText } from "@getpaseo/plugin/client/ui";
 import { Glyph } from "./glyph";
 import { unselectable } from "./selection";
 import { radius } from "./theme-tokens";

@@ -1,6 +1,6 @@
 import React, { type ReactElement } from "react";
 import { View, Text, StyleSheet, Image } from "react-native";
-import { Icon as HostIcon } from "@getpaseo/plugin/client/react-native";
+import { Icon as HostIcon } from "@getpaseo/plugin/client/ui";
 import { fontMono } from "./theme-tokens";
 import { MARK_BITMAPS, MONO_MARKS } from "./mark-bitmaps";
 import { unselectable } from "./selection";

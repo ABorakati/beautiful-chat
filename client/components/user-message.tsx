@@ -1,6 +1,6 @@
 import React, { useMemo, useCallback, useState } from "react";
 import { View, Text, Pressable, StyleSheet, Image } from "react-native";
-import { copyText } from "@getpaseo/plugin/client/react-native";
+import { copyText } from "@getpaseo/plugin/client/ui";
 import { Glyph } from "./glyph";
 import { Pop } from "./motion";
 import { radius } from "./theme-tokens";
