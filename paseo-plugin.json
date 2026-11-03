@@ -1,7 +1,7 @@
 {
   "id": "beautiful-chat",
   "requirements": {
-    "paseo": ">=0.8.0"
+    "paseo": ">=0.15.0"
   },
   "build": [["npm", "ci", "--include=dev"]]
 }

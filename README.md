@@ -16,7 +16,7 @@ them.
 paseo plugin install ABorakati/beautiful-chat
 ```
 
-The manifest requires Paseo `>=0.8.0`. Open **Settings → Plugins → Beautiful Chat** for the
+The manifest requires Paseo `>=0.15.0`. Open **Settings → Plugins → Beautiful Chat** for the
 accent, fonts, frosted glass, and prompt bubble options.
 
 ---
@@ -188,8 +188,10 @@ A directory path opens that directory. A path the daemon cannot stat does nothin
 
 ## Unmapped output
 
-A tool the plugin has no typed card for still shows its output in the terminal frame, and a call
-that printed nothing says so. No card renders an empty panel.
+A tool the plugin has no typed card for, such as `ToolSearch`, is drawn as a generic card. It shows
+the call's input and its output as pretty JSON, or as plain text when the value is a string, and
+long payloads are cut off at a sensible length. A call that returned nothing says "No output.".
+Only a real shell call says "Command completed without output.". No card renders an empty panel.
 
 The link cannot open Paseo's own file editor: see the first limitation below.
 
@@ -197,7 +199,7 @@ The link cannot open Paseo's own file editor: see the first limitation below.
 
 ## Plugin SDK limitations found while building this
 
-Measured against `@getpaseo/plugin` 0.8.0 and the Paseo 0.8.0 desktop build. Each entry names the
+First measured against `@getpaseo/plugin` 0.8.0 and the Paseo 0.8.0 desktop build, and rechecked against the 0.15.0 types: limitations 1 to 3 still hold (0.15 adds a `navigation` prop to panels and screens, not to timeline renderers, and user messages still carry no attachment signal). Each entry names the
 evidence and the workaround this plugin uses.
 
 1. **No file navigation.** Timeline renderer props are exactly `{agentId, theme, host, layout,
@@ -290,7 +292,8 @@ Rebuild the screenshots after a visual change:
 ```bash
 esbuild .showcase/showcase.tsx --bundle --outfile=.showcase/showcase.js --jsx=automatic \
   --alias:react-native=react-native-web \
-  --alias:@getpaseo/plugin/client/react-native=./.showcase/shims/plugin-react-native.tsx
+  --alias:@getpaseo/plugin/client/react-native=./.showcase/shims/plugin-react-native.tsx \
+  --alias:@getpaseo/plugin/client/ui=./.showcase/shims/plugin-react-native.tsx
 ```
 
 Then serve `.showcase/` and capture each `#shot-*` element.
