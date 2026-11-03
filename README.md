@@ -125,6 +125,10 @@ A collapsible trace with a connected step rail, per-step duration, and a token t
 
 Phase name, per-task status, durations, and a blocked task with its reason.
 
+Live checklist is on by default. Each agent shows only its newest update where it arrived and removes earlier updates.
+The plugin reads the agent's timeline even when the newest update is outside the visible rows.
+Turn the setting off to show each update.
+
 ![Checklist](docs/images/tasks.png)
 
 ### Approval card
@@ -172,6 +176,7 @@ Devicon brand marks, and the file-manager link.
 | Timeline | Collapse length | Fold every selected card, or only cards over 10, 20, or 50 lines. |
 | Timeline | Open while running | Open tool cards while their calls run, then apply the collapse rules. Disable this setting to apply those rules from the start. |
 | Timeline | Fold reasoning summaries | Fold summaries after completion. Disable this setting to keep every summary open. |
+| Timeline | Live checklist | On by default. Hide older updates when the agent feed identifies a newer checklist. Keep cards visible while the feed is unavailable. Disable this setting to show every update. |
 | Interaction | Selection actions | Select text to show Copy and Add to chat on desktop and web. Add to chat inserts a quote or code block. |
 
 The live preview uses the real prompt, reasoning, tool, reply, and checklist components with sample data.

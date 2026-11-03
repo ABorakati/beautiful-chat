@@ -21,6 +21,8 @@ interface TaskListProps {
 
 export function TaskList({ data, tokens, onToggleTask }: TaskListProps) {
   const [tasks, setTasks] = useState<TaskItemData[]>(data.tasks);
+  // Each checklist update replaces the task data without a new component.
+  useEffect(() => setTasks(data.tasks), [data.tasks]);
   const [expandedBlockedId, setExpandedBlockedId] = useState<string | null>(null);
 
   const completedCount = tasks.filter((t) => t.status === "completed").length;

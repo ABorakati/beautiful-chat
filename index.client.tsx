@@ -8,7 +8,8 @@ import { installPointerGlow } from "./client/components/glow";
 import { installHostNoticeStyle } from "./client/components/host-notice";
 import { installChatFind } from "./client/components/chat-find";
 import { extractPromptImages } from "./client/prompt-images";
-import { getEnhancerPreferences } from "./client/preferences";
+import { getEnhancerPreferences, subscribeEnhancerPreferences } from "./client/preferences";
+import { isSupersededChecklist, subscribeNewestChecklist } from "./client/components/checklist-live";
 import {
   LiveToolCallRenderer,
   LiveReasoningRenderer,
@@ -116,33 +117,50 @@ export default function contribute(client: PluginClientContext) {
     Component: LiveReasoningRenderer,
   });
 
-  const removeTodoTransformer = client.addTimelineTransformer({
-    id: "omp-enhanced-todo",
-    query: { itemType: "todo" },
-    transform({ item, phase }) {
-      if (item.type !== "todo") return undefined;
-      return {
-        items: [
-          {
-            type: "plugin" as const,
-            kind: "omp-todo",
-            version: 1,
-            data: {
-              items: toJsonValue(item.items),
-              phase,
+  // Each todo call repeats the list. Keep unknown lists so their rows can open
+  // a feed. Drop known older lists to remove the host's row gap as well.
+  const addTodoTransformer = () =>
+    client.addTimelineTransformer({
+      id: "omp-enhanced-todo",
+      query: { itemType: "todo" },
+      transform({ item }) {
+        if (item.type !== "todo") return undefined;
+        if (getEnhancerPreferences().liveChecklist && isSupersededChecklist(item.items)) {
+          return { items: [] };
+        }
+        return {
+          items: [
+            {
+              type: "plugin" as const,
+              kind: "omp-todo",
+              version: 1,
+              data: { items: toJsonValue(item.items) },
             },
-          },
-        ],
-      };
-    },
+          ],
+        };
+      },
+    });
+  let removeTodoTransformer = addTodoTransformer();
+  // Paseo caches projected rows. Register again when the setting or known
+  // lists change so existing rows follow the change.
+  const reregisterTodo = () => {
+    removeTodoTransformer();
+    removeTodoTransformer = addTodoTransformer();
+  };
+  let liveChecklist = getEnhancerPreferences().liveChecklist;
+  const stopChecklistWatch = subscribeEnhancerPreferences(() => {
+    const next = getEnhancerPreferences().liveChecklist;
+    if (next === liveChecklist) return;
+    liveChecklist = next;
+    reregisterTodo();
   });
+  const stopNewestWatch = subscribeNewestChecklist(reregisterTodo);
 
   const removeTodoRenderer = client.addTimelineRenderer({
     kind: "omp-todo",
     version: 1,
     schema: z.object({
       items: z.array(z.record(z.string(), z.unknown())),
-      phase: z.string().optional(),
     }),
     Component: LiveTodoRenderer,
   });
@@ -269,6 +287,8 @@ export default function contribute(client: PluginClientContext) {
     removeToolRenderer();
     removeReasoningTransformer();
     removeReasoningRenderer();
+    stopChecklistWatch();
+    stopNewestWatch();
     removeTodoTransformer();
     removeTodoRenderer();
     removeUserTransformer();
