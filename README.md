@@ -48,6 +48,12 @@ reach the file; PNG, JPEG, GIF, WebP, AVIF, BMP, ICO and SVG are recognised, and
 
 ![Image read](docs/images/tool-image.png)
 
+The same card draws a markdown image in a reply. The daemon appends `![Image](file:///...)` after
+any tool that returned a picture: a Claude Read of an image or a browser screenshot, a Codex
+`view_image` or image generation, or an MCP tool result with an image block. Those go through the
+same `file.image` RPC; an `http(s)` or `data:` source loads in the image view directly, and the
+header shows the alt text, or the file name when the alt is just "Image".
+
 ### Edit
 
 Diff rendering where adjacent removed and added rows join into one rounded block, and only the

@@ -8,6 +8,7 @@ import { selectionSurface } from "../selection-actions";
 import { SyntaxHighlightBlock } from "../syntax-highlight";
 import { openLink } from "../open-link";
 import { parseMarkdown, type MdAlign, type MdBlock, type MdInline, type MdListItem } from "./parse";
+import { MarkdownImage } from "./markdown-image";
 
 /**
  * The assistant's own prose, drawn by the plugin instead of the host. Three
@@ -24,6 +25,8 @@ export interface MarkdownViewProps {
   variant: MarkdownVariant;
   /** A code block longer than this folds to a preview. Omitted or zero: never. */
   foldCodeAfter?: number;
+  /** The agent's working directory, which a relative image path resolves against. */
+  cwd?: string | null;
 }
 
 type MdTableBlock = Extract<MdBlock, { kind: "table" }>;
@@ -189,6 +192,8 @@ interface MarkdownStyles {
   strike: TextStyle;
   codeSpan: TextStyle;
   link: TextStyle;
+  imageAlt: TextStyle;
+  imageParagraph: ViewStyle;
 }
 
 interface RenderContext {
@@ -196,14 +201,15 @@ interface RenderContext {
   tokens: ExtendedThemeTokens;
   metrics: VariantMetrics;
   foldCodeAfter: number;
+  cwd: string | null;
 }
 
-export function MarkdownView({ text, tokens, variant, foldCodeAfter = 0 }: MarkdownViewProps) {
+export function MarkdownView({ text, tokens, variant, foldCodeAfter = 0, cwd }: MarkdownViewProps) {
   const blocks = useMemo(() => parseMarkdown(text), [text]);
   const styles = useMemo(() => buildStyles(tokens, variant), [tokens, variant]);
   const context = useMemo<RenderContext>(
-    () => ({ styles, tokens, metrics: VARIANT_METRICS[variant], foldCodeAfter }),
-    [styles, tokens, variant, foldCodeAfter],
+    () => ({ styles, tokens, metrics: VARIANT_METRICS[variant], foldCodeAfter, cwd: cwd ?? null }),
+    [styles, tokens, variant, foldCodeAfter, cwd],
   );
 
   return (
@@ -238,11 +244,7 @@ function renderBlock(
     }
 
     case "paragraph":
-      return (
-        <Text key={key} selectable style={styles.paragraph}>
-          {renderInline(block.spans, styles, key)}
-        </Text>
-      );
+      return renderParagraph(block.spans, key, context);
 
     case "list": {
       const numberWidth = orderedColumnWidth(block.items, metrics);
@@ -295,6 +297,63 @@ function renderBlock(
         </Text>
       );
   }
+}
+
+/**
+ * A paragraph is one Text unless it holds an image. A picture cannot live in a
+ * line box, so the runs around each image become their own Text and the image
+ * stands between them as a block, which is also how the daemon writes one: a
+ * reply that is nothing but `![Image](file:///...)`.
+ */
+function renderParagraph(spans: MdInline[], key: string, context: RenderContext): React.ReactNode {
+  const { styles, tokens, cwd } = context;
+  if (!spans.some((span) => span.kind === "image")) {
+    return (
+      <Text key={key} selectable style={styles.paragraph}>
+        {renderInline(spans, styles, key)}
+      </Text>
+    );
+  }
+
+  const parts: React.ReactNode[] = [];
+  let run: MdInline[] = [];
+  const flushRun = (): void => {
+    // Whitespace between two images is layout, not prose.
+    const prose = run.some((span) => span.kind !== "text" || span.text.trim() !== "");
+    if (prose) {
+      const runKey = `${key}p${parts.length}`;
+      parts.push(
+        <Text key={runKey} selectable style={styles.paragraph}>
+          {renderInline(run, styles, runKey)}
+        </Text>,
+      );
+    }
+    run = [];
+  };
+
+  for (const span of spans) {
+    if (span.kind !== "image") {
+      run.push(span);
+      continue;
+    }
+    flushRun();
+    parts.push(
+      <MarkdownImage
+        key={`${key}p${parts.length}`}
+        src={span.src}
+        alt={span.alt}
+        tokens={tokens}
+        cwd={cwd}
+      />,
+    );
+  }
+  flushRun();
+
+  return (
+    <View key={key} style={styles.imageParagraph}>
+      {parts}
+    </View>
+  );
 }
 
 function renderItem(
@@ -445,6 +504,15 @@ function renderInline(
             {renderInline(span.spans, styles, key)}
           </Text>
         );
+      case "image":
+        // Inside a heading, list item, quote or cell there is no block to put
+        // a picture in, so the alt text stands in for it, as plain markdown
+        // would read. Paragraphs, where images actually arrive, draw them.
+        return (
+          <Text key={key} selectable style={styles.imageAlt}>
+            {span.alt === "" ? span.src : span.alt}
+          </Text>
+        );
       case "link":
         // `onPress` on a Text, not a Pressable wrapper: a link sits mid
         // sentence, and a View there would break the line box and drop the
@@ -500,6 +568,9 @@ function inlineWidth(spans: MdInline[], size: number, ratio: number): number {
         break;
       case "codeSpan":
         width += span.text.length * size * CHAR_RATIO_MONO + CODE_CHIP_PADDING * 2;
+        break;
+      case "image":
+        width += span.alt.length * size * ratio;
         break;
       default:
         width += inlineWidth(span.spans, size, ratio);
@@ -740,6 +811,13 @@ function buildStyles(tokens: ExtendedThemeTokens, variant: MarkdownVariant): Mar
     link: {
       color: tokens.accent,
       textDecorationLine: "underline",
+    },
+    imageAlt: {
+      color: tokens.foregroundMuted,
+      fontStyle: "italic",
+    },
+    imageParagraph: {
+      gap: 8,
     },
   });
 }
