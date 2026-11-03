@@ -541,7 +541,7 @@ export function LiveToolCallRenderer({
         : "GitHub";
     } else if (isGitCommand) {
       toolKind = "git";
-      title = command ? `$ ${command.trim().slice(0, 55)}` : "Git command";
+      title = command ? `$ ${command.trim()}` : "Git command";
     } else if (rawName === "read" || detailType === "read") {
       toolKind = "read";
       title = filePath ? `Read ${filePath.split(/[/\\]/).pop() || filePath}` : "Read file";
@@ -553,7 +553,7 @@ export function LiveToolCallRenderer({
       title = filePath ? `Edit ${filePath.split(/[/\\]/).pop() || filePath}` : "Edit file";
     } else if (rawName === "bash" || rawName === "shell" || detailType === "shell") {
       toolKind = rawName === "shell" || detailType === "shell" ? "shell" : "bash";
-      title = command ? `$ ${command.trim().slice(0, 55)}` : "Execute command";
+      title = command ? `$ ${command.trim()}` : "Execute command";
     } else if (rawName === "thinking") {
       toolKind = "thinking";
       title = "Reasoning Process";
@@ -609,6 +609,8 @@ export function LiveToolCallRenderer({
       status:
         data.status === "running" ? "running" : data.status === "failed" ? "failed" : "completed",
       filePath,
+      // Keep the full command available when the single-line header is collapsed.
+      command,
       language:
         toolKind === "bash" || toolKind === "shell" || toolKind === "git"
           ? "bash"
