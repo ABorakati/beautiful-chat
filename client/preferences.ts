@@ -21,6 +21,10 @@ export type CollapsibleToolGroup = (typeof COLLAPSIBLE_TOOL_GROUPS)[number];
 export const CODE_FOLD_LIMITS = [0, 30, 60] as const;
 export type CodeFoldLimit = (typeof CODE_FOLD_LIMITS)[number];
 
+/** Zero never folds a prompt. Any other value folds one that runs longer. */
+export const PROMPT_FOLD_LIMITS = [0, 15, 30] as const;
+export type PromptFoldLimit = (typeof PROMPT_FOLD_LIMITS)[number];
+
 /** Zero folds every finished card. Any other value spares a card that short. */
 export const COLLAPSE_LINE_LIMITS = [0, 10, 20, 50] as const;
 export type CollapseLineLimit = (typeof COLLAPSE_LINE_LIMITS)[number];
@@ -70,6 +74,8 @@ export interface EnhancerPreferences {
   collapseReasoning: boolean;
   /** A reply's code block longer than this folds to a preview. Zero never folds. */
   codeFoldLimit: CodeFoldLimit;
+  /** A prompt that runs past this many lines folds to a preview. Zero never folds. */
+  promptFoldLimit: PromptFoldLimit;
 }
 
 const STORAGE_KEY = "paseo/beautiful-chat/preferences/v1";
@@ -89,6 +95,7 @@ export const DEFAULT_PREFERENCES: Readonly<EnhancerPreferences> = {
   expandWhileRunning: true,
   collapseReasoning: true,
   codeFoldLimit: 30,
+  promptFoldLimit: 15,
 };
 
 const listeners = new Set<() => void>();
@@ -108,6 +115,10 @@ function isCollapseLineLimit(value: unknown): value is CollapseLineLimit {
 
 function isCodeFoldLimit(value: unknown): value is CodeFoldLimit {
   return CODE_FOLD_LIMITS.includes(value as CodeFoldLimit);
+}
+
+function isPromptFoldLimit(value: unknown): value is PromptFoldLimit {
+  return PROMPT_FOLD_LIMITS.includes(value as PromptFoldLimit);
 }
 
 function collapseToolsFrom(value: unknown): CollapsibleToolGroup[] {
@@ -163,6 +174,9 @@ function loadPreferences(): EnhancerPreferences {
       codeFoldLimit: isCodeFoldLimit(candidate.codeFoldLimit)
         ? candidate.codeFoldLimit
         : DEFAULT_PREFERENCES.codeFoldLimit,
+      promptFoldLimit: isPromptFoldLimit(candidate.promptFoldLimit)
+        ? candidate.promptFoldLimit
+        : DEFAULT_PREFERENCES.promptFoldLimit,
     };
   } catch {
     return { ...DEFAULT_PREFERENCES };

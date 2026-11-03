@@ -12,6 +12,7 @@ import {
   type AccentPreset,
   type CodeFoldLimit,
   type CodeFontPreference,
+  type PromptFoldLimit,
   type CollapseLineLimit,
   type CollapsibleToolGroup,
   type UiFontPreference,
@@ -48,6 +49,12 @@ const CODE_FOLD_OPTIONS: ReadonlyArray<{ value: `${CodeFoldLimit}`; label: strin
   { value: "0", label: "Never" },
   { value: "30", label: "Over 30 lines" },
   { value: "60", label: "Over 60 lines" },
+];
+
+const PROMPT_FOLD_OPTIONS: ReadonlyArray<{ value: `${PromptFoldLimit}`; label: string }> = [
+  { value: "0", label: "Never" },
+  { value: "15", label: "Over 15 lines" },
+  { value: "30", label: "Over 30 lines" },
 ];
 
 const TRACK_WIDTH = 38;
@@ -504,6 +511,17 @@ export function BeautifulChatSettingsPage({ theme }: PluginSurfaceProps) {
           options={CODE_FOLD_OPTIONS}
           onChange={(value) =>
             updateEnhancerPreferences({ codeFoldLimit: Number(value) as CodeFoldLimit })
+          }
+          tokens={tokens}
+        />
+
+        <ChoiceRow<`${PromptFoldLimit}`>
+          title="Long prompts"
+          description="A prompt of yours that runs past the limit shows its first eight lines and a button to open the rest. Copy still copies the whole prompt. Paseo's own bubble, used when Enhanced prompt bubble is off, does not fold."
+          value={`${preferences.promptFoldLimit}`}
+          options={PROMPT_FOLD_OPTIONS}
+          onChange={(value) =>
+            updateEnhancerPreferences({ promptFoldLimit: Number(value) as PromptFoldLimit })
           }
           tokens={tokens}
         />

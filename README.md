@@ -157,6 +157,7 @@ Devicon brand marks, and the file-manager link.
 | Open while running     | Off keeps cards folded while their call is still running.          |
 | Fold reasoning         | Off keeps every reasoning summary open.                            |
 | Long code blocks       | Fold reply code blocks over 30 or 60 lines to a 10-line preview.   |
+| Long prompts           | Fold prompts over 15 or 30 lines to an 8-line preview.             |
 
 ---
 

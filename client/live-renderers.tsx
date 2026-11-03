@@ -981,6 +981,7 @@ export function LiveUserMessageRenderer({
           tokens={tokens}
           usage={observedLive ? usage : null}
           pending={running && !frozen}
+          foldAfterLines={preferences.promptFoldLimit}
         />
       )}
     </View>

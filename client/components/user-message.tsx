@@ -27,6 +27,22 @@ interface UserMessageProps {
   usage?: TurnUsage | null;
   /** True while the turn is still running, so the figures are still climbing. */
   pending?: boolean;
+  /** A prompt longer than about this many lines folds to a preview. Omitted or zero: never. */
+  foldAfterLines?: number;
+}
+
+/** How many lines a folded prompt keeps in view. */
+const FOLD_PREVIEW_LINES = 8;
+/**
+ * A rough line width for the bubble. The clamp itself counts real wrapped
+ * lines, so this only decides whether a prompt is long enough to fold.
+ */
+const CHARS_PER_LINE = 70;
+
+function estimatedLines(text: string): number {
+  return text
+    .split("\n")
+    .reduce((sum, line) => sum + Math.max(1, Math.ceil(line.length / CHARS_PER_LINE)), 0);
 }
 
 /**
@@ -86,8 +102,12 @@ export function UserMessage({
   tokens,
   usage,
   pending = false,
+  foldAfterLines = 0,
 }: UserMessageProps) {
   const [copied, setCopied] = useState(false);
+  const [unfolded, setUnfolded] = useState(false);
+  const foldable = foldAfterLines > 0 && estimatedLines(text) > foldAfterLines;
+  const folded = foldable && !unfolded;
   const handleCopy = useCallback(() => {
     // The host owns clipboard access. Reaching for navigator directly would
     // only work on web and would bypass its permission handling.
@@ -148,6 +168,20 @@ export function UserMessage({
           fontSize: 13.5,
           lineHeight: 20,
           color: tokens.userText,
+        },
+        foldButton: {
+          flexDirection: "row",
+          alignItems: "center",
+          alignSelf: "flex-start",
+          gap: 4,
+          marginTop: 4,
+          paddingVertical: 2,
+        },
+        foldText: {
+          fontFamily: tokens.fontUi,
+          fontSize: 12,
+          fontWeight: "600",
+          color: tokens.userTextMuted,
         },
         imageRow: {
           marginTop: 8,
@@ -214,9 +248,28 @@ export function UserMessage({
             </Pop>
           </Pressable>
         </View>
-        <Text selectable style={styles.text}>
+        <Text
+          selectable
+          style={styles.text}
+          numberOfLines={folded ? FOLD_PREVIEW_LINES : undefined}
+        >
           {text}
         </Text>
+        {foldable ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ expanded: !folded }}
+            onPress={() => setUnfolded((value) => !value)}
+            style={styles.foldButton}
+          >
+            <Text style={styles.foldText}>{folded ? "Show full prompt" : "Show less"}</Text>
+            <Glyph
+              name={folded ? "ChevronDown" : "ChevronUp"}
+              size={13}
+              color={tokens.userTextMuted}
+            />
+          </Pressable>
+        ) : null}
         {images?.length ? (
           <View style={styles.imageRow}>
             {images.map((uri) => (
