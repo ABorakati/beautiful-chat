@@ -22,6 +22,8 @@ export interface MarkdownViewProps {
   text: string;
   tokens: ExtendedThemeTokens;
   variant: MarkdownVariant;
+  /** A code block longer than this folds to a preview. Omitted or zero: never. */
+  foldCodeAfter?: number;
 }
 
 type MdTableBlock = Extract<MdBlock, { kind: "table" }>;
@@ -193,14 +195,15 @@ interface RenderContext {
   styles: MarkdownStyles;
   tokens: ExtendedThemeTokens;
   metrics: VariantMetrics;
+  foldCodeAfter: number;
 }
 
-export function MarkdownView({ text, tokens, variant }: MarkdownViewProps) {
+export function MarkdownView({ text, tokens, variant, foldCodeAfter = 0 }: MarkdownViewProps) {
   const blocks = useMemo(() => parseMarkdown(text), [text]);
   const styles = useMemo(() => buildStyles(tokens, variant), [tokens, variant]);
   const context = useMemo<RenderContext>(
-    () => ({ styles, tokens, metrics: VARIANT_METRICS[variant] }),
-    [styles, tokens, variant],
+    () => ({ styles, tokens, metrics: VARIANT_METRICS[variant], foldCodeAfter }),
+    [styles, tokens, variant, foldCodeAfter],
   );
 
   return (
@@ -274,6 +277,7 @@ function renderBlock(
             tokens={tokens}
             compact={metrics.codeCompact}
             showLineNumbers={metrics.codeLineNumbers}
+            foldAfterLines={context.foldCodeAfter}
           />
         </View>
       );

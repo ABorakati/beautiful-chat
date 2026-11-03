@@ -17,6 +17,10 @@ export type MarkdownVariantPreference = "document" | "compact" | "terminal";
 export const COLLAPSIBLE_TOOL_GROUPS = ["shell", "write", "edit", "read", "other"] as const;
 export type CollapsibleToolGroup = (typeof COLLAPSIBLE_TOOL_GROUPS)[number];
 
+/** Zero never folds a code block. Any other value folds a longer one. */
+export const CODE_FOLD_LIMITS = [0, 30, 60] as const;
+export type CodeFoldLimit = (typeof CODE_FOLD_LIMITS)[number];
+
 /** Zero folds every finished card. Any other value spares a card that short. */
 export const COLLAPSE_LINE_LIMITS = [0, 10, 20, 50] as const;
 export type CollapseLineLimit = (typeof COLLAPSE_LINE_LIMITS)[number];
@@ -64,6 +68,8 @@ export interface EnhancerPreferences {
   expandWhileRunning: boolean;
   /** A reasoning summary folds once the thought completes. Off keeps every summary open. */
   collapseReasoning: boolean;
+  /** A reply's code block longer than this folds to a preview. Zero never folds. */
+  codeFoldLimit: CodeFoldLimit;
 }
 
 const STORAGE_KEY = "paseo/beautiful-chat/preferences/v1";
@@ -82,6 +88,7 @@ export const DEFAULT_PREFERENCES: Readonly<EnhancerPreferences> = {
   collapseLineLimit: 0,
   expandWhileRunning: true,
   collapseReasoning: true,
+  codeFoldLimit: 30,
 };
 
 const listeners = new Set<() => void>();
@@ -97,6 +104,10 @@ function isAccentPreset(value: unknown): value is AccentPreset {
 
 function isCollapseLineLimit(value: unknown): value is CollapseLineLimit {
   return COLLAPSE_LINE_LIMITS.includes(value as CollapseLineLimit);
+}
+
+function isCodeFoldLimit(value: unknown): value is CodeFoldLimit {
+  return CODE_FOLD_LIMITS.includes(value as CodeFoldLimit);
 }
 
 function collapseToolsFrom(value: unknown): CollapsibleToolGroup[] {
@@ -149,6 +160,9 @@ function loadPreferences(): EnhancerPreferences {
         typeof candidate.collapseReasoning === "boolean"
           ? candidate.collapseReasoning
           : DEFAULT_PREFERENCES.collapseReasoning,
+      codeFoldLimit: isCodeFoldLimit(candidate.codeFoldLimit)
+        ? candidate.codeFoldLimit
+        : DEFAULT_PREFERENCES.codeFoldLimit,
     };
   } catch {
     return { ...DEFAULT_PREFERENCES };

@@ -21,7 +21,14 @@ interface SyntaxHighlightProps {
   compact?: boolean;
   /** Shows the file in the machine's own file manager. Omitted: plain label. */
   onRevealFile?: () => void;
+  /** A block longer than this many lines folds to a preview. Omitted or zero: never. */
+  foldAfterLines?: number;
 }
+
+/** How much of a folded block stays in view. */
+const FOLD_PREVIEW_LINES = 10;
+/** The last preview rows fade, so the cut reads as more to come. */
+const FOLD_FADE = [0.6, 0.3];
 
 const STATIC_KEYWORDS: Record<string, true> = {
   import: true,
@@ -471,8 +478,10 @@ export function SyntaxHighlightBlock({
   filename,
   compact = false,
   onRevealFile,
+  foldAfterLines = 0,
 }: SyntaxHighlightProps) {
   const [copied, setCopied] = useState(false);
+  const [unfolded, setUnfolded] = useState(false);
 
   const handleCopy = useCallback(() => {
     if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
@@ -516,6 +525,10 @@ export function SyntaxHighlightBlock({
   });
   const shikiLines = highlightResult?.lines;
   const diffBodyLines = highlightResult?.diffLines;
+
+  const foldable = foldAfterLines > 0 && lines.length > foldAfterLines;
+  const folded = foldable && !unfolded;
+  const shownLines = folded ? lines.slice(0, FOLD_PREVIEW_LINES) : lines;
 
   const styles = useMemo(
     () =>
@@ -620,6 +633,23 @@ export function SyntaxHighlightBlock({
           fontFamily: tokens.fontCode,
           color: tokens.foreground,
         },
+        foldBar: {
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 6,
+          paddingVertical: 7,
+          borderTopWidth: 1,
+          borderTopColor: tokens.borderSubtle,
+          backgroundColor: tokens.surface1,
+        },
+        foldText: {
+          fontFamily: tokens.fontUi,
+          fontSize: 12,
+          fontWeight: "500",
+          color: tokens.foregroundMuted,
+          ...unselectable,
+        },
       }),
     [tokens, compact, copied],
   );
@@ -673,7 +703,7 @@ export function SyntaxHighlightBlock({
       )}
 
       <View {...selectionCodeSurface} style={styles.codeArea}>
-        {lines.map((line, idx) => {
+        {shownLines.map((line, idx) => {
           const shikiLine = shikiLines?.[idx];
           // The patched file's tokens, and only for a line the file owns. A
           // chrome line keeps the diff rendering it has today.
@@ -700,6 +730,9 @@ export function SyntaxHighlightBlock({
               style={[
                 styles.lineRow,
                 {
+                  opacity: folded
+                    ? (FOLD_FADE[idx - (FOLD_PREVIEW_LINES - FOLD_FADE.length)] ?? 1)
+                    : 1,
                   backgroundColor: lineBg,
                   borderTopLeftRadius: opensRun ? corner : 0,
                   borderTopRightRadius: opensRun ? corner : 0,
@@ -726,6 +759,23 @@ export function SyntaxHighlightBlock({
           );
         })}
       </View>
+      {foldable ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ expanded: !folded }}
+          onPress={() => setUnfolded((value) => !value)}
+          style={styles.foldBar}
+        >
+          <Text style={styles.foldText}>
+            {folded ? `Show all ${lines.length} lines` : "Show less"}
+          </Text>
+          <Glyph
+            name={folded ? "ChevronDown" : "ChevronUp"}
+            size={14}
+            color={tokens.foregroundMuted}
+          />
+        </Pressable>
+      ) : null}
     </View>
   );
 }

@@ -10,6 +10,7 @@ import {
   updateEnhancerPreferences,
   useEnhancerPreferences,
   type AccentPreset,
+  type CodeFoldLimit,
   type CodeFontPreference,
   type CollapseLineLimit,
   type CollapsibleToolGroup,
@@ -41,6 +42,12 @@ const LINE_LIMIT_OPTIONS: ReadonlyArray<{ value: `${CollapseLineLimit}`; label: 
   { value: "10", label: "Over 10 lines" },
   { value: "20", label: "Over 20 lines" },
   { value: "50", label: "Over 50 lines" },
+];
+
+const CODE_FOLD_OPTIONS: ReadonlyArray<{ value: `${CodeFoldLimit}`; label: string }> = [
+  { value: "0", label: "Never" },
+  { value: "30", label: "Over 30 lines" },
+  { value: "60", label: "Over 60 lines" },
 ];
 
 const TRACK_WIDTH = 38;
@@ -487,6 +494,17 @@ export function BeautifulChatSettingsPage({ theme }: PluginSurfaceProps) {
           description="A reasoning summary folds to its header once the thought completes. Turn this off to keep every summary open."
           value={preferences.collapseReasoning}
           onChange={(collapseReasoning) => updateEnhancerPreferences({ collapseReasoning })}
+          tokens={tokens}
+        />
+
+        <ChoiceRow<`${CodeFoldLimit}`>
+          title="Long code blocks"
+          description="A code block in a reply that runs past the limit shows its first lines and a bar to open the rest. Copy still copies the whole block."
+          value={`${preferences.codeFoldLimit}`}
+          options={CODE_FOLD_OPTIONS}
+          onChange={(value) =>
+            updateEnhancerPreferences({ codeFoldLimit: Number(value) as CodeFoldLimit })
+          }
           tokens={tokens}
         />
       </View>
