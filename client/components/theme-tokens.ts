@@ -1,5 +1,6 @@
 import type { PluginTheme } from "@getpaseo/plugin";
 import { DEFAULT_PREFERENCES, type EnhancerPreferences, ACCENT_PRESETS } from "../preferences";
+import { readHostAppSettings } from "../host-settings";
 
 export type PluginSurfaceColors = PluginTheme["colors"];
 
@@ -28,8 +29,25 @@ export const fontMono = "OMP Iosevka";
 export const fontCode = "OMP Iosevka Code";
 export const fontUi = "OMP Inter";
 
+/** Compact keeps the original line height. */
+const LINE_SPACING = { compact: 1, balanced: 1.15, spacious: 1.3 } as const;
+
+/** Uses only the first family because native fontFamily accepts one name. */
+function readHostFonts(): { ui?: string; mono?: string } {
+  const settings = readHostAppSettings();
+  return { ui: firstFamily(settings.uiFontFamily), mono: firstFamily(settings.monoFontFamily) };
+}
+
+function firstFamily(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const family = (value.split(",")[0] ?? "").trim().replace(/^["']|["']$/g, "");
+  return family || undefined;
+}
+
 export interface ExtendedThemeTokens {
   isDark: boolean;
+  /** Multiplies each text line height by the selected spacing. */
+  leading: number;
   fontMono: string;
   fontCode: string;
   fontUi: string;
@@ -174,12 +192,14 @@ export function buildThemeTokens(
   const danger = colors.statusDanger;
   const tint = isDark ? 0.1 : 0.08;
   const edge = isDark ? 0.22 : 0.18;
+  const host = preferences.hostFonts ? readHostFonts() : {};
 
   return {
     isDark,
-    fontMono,
-    fontCode: preferences.codeFont === "plain" ? fontMono : fontCode,
-    fontUi: preferences.uiFont === "system" ? "System" : fontUi,
+    leading: LINE_SPACING[preferences.lineSpacing],
+    fontMono: host.mono ?? fontMono,
+    fontCode: host.mono ?? (preferences.codeFont === "plain" ? fontMono : fontCode),
+    fontUi: host.ui ?? (preferences.uiFont === "system" ? "System" : fontUi),
 
     surface0: colors.surface0,
     surface1: withAlpha(fg, isDark ? 0.03 : 0.025),

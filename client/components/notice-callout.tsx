@@ -129,7 +129,7 @@ export function NoticeCallout({ data, tokens }: NoticeCalloutProps): React.React
           minWidth: 0,
           fontFamily: tokens.fontUi,
           fontSize: 12,
-          lineHeight: 18,
+          lineHeight: 18 * tokens.leading,
           color: tokens.foreground,
         },
         dataBlock: {
@@ -142,7 +142,7 @@ export function NoticeCallout({ data, tokens }: NoticeCalloutProps): React.React
         dataText: {
           fontFamily: tokens.fontMono,
           fontSize: 11.5,
-          lineHeight: 17,
+          lineHeight: 17 * tokens.leading,
           color: tokens.foregroundMuted,
         },
       }),

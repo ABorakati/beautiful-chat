@@ -1279,14 +1279,14 @@ function useHubStyles(tokens: ExtendedThemeTokens): HubStyles {
         errorText: {
           fontFamily: tokens.fontUi,
           fontSize: 11,
-          lineHeight: 16,
+          lineHeight: 16 * tokens.leading,
           color: tokens.danger,
           flexShrink: 1,
         },
         bodyText: {
           fontFamily: tokens.fontUi,
           fontSize: 12,
-          lineHeight: 18,
+          lineHeight: 18 * tokens.leading,
           color: tokens.foreground,
           flex: 1,
           minWidth: 0,
@@ -1294,7 +1294,7 @@ function useHubStyles(tokens: ExtendedThemeTokens): HubStyles {
         subtleBody: {
           fontFamily: tokens.fontUi,
           fontSize: 11,
-          lineHeight: 16,
+          lineHeight: 16 * tokens.leading,
           color: tokens.foregroundMuted,
           flex: 1,
           minWidth: 0,
@@ -1316,7 +1316,7 @@ function useHubStyles(tokens: ExtendedThemeTokens): HubStyles {
         messageText: {
           fontFamily: tokens.fontMono,
           fontSize: 12,
-          lineHeight: 18,
+          lineHeight: 18 * tokens.leading,
           color: tokens.foreground,
         },
         replyBox: {
@@ -1330,7 +1330,7 @@ function useHubStyles(tokens: ExtendedThemeTokens): HubStyles {
         replyText: {
           fontFamily: tokens.fontUi,
           fontSize: 12,
-          lineHeight: 18,
+          lineHeight: 18 * tokens.leading,
           color: tokens.foregroundMuted,
         },
         codeBlock: {
@@ -1344,7 +1344,7 @@ function useHubStyles(tokens: ExtendedThemeTokens): HubStyles {
         codeText: {
           fontFamily: tokens.fontMono,
           fontSize: 11,
-          lineHeight: 16,
+          lineHeight: 16 * tokens.leading,
           color: tokens.foregroundMuted,
         },
         moreLabel: {

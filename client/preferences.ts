@@ -12,6 +12,7 @@ export type AccentPreset = keyof typeof ACCENT_PRESETS;
 export type UiFontPreference = "inter" | "system";
 export type CodeFontPreference = "code" | "plain";
 export type MarkdownVariantPreference = "document" | "compact" | "terminal";
+export type LineSpacingPreference = "compact" | "balanced" | "spacious";
 
 /** The groups of tool card a reader can fold separately. */
 export const COLLAPSIBLE_TOOL_GROUPS = ["shell", "write", "edit", "read", "other"] as const;
@@ -34,6 +35,10 @@ export interface EnhancerPreferences {
   uiFont: UiFontPreference;
   codeFont: CodeFontPreference;
   frostedGlass: boolean;
+  /** Uses Paseo's interface and code fonts on web and desktop. */
+  hostFonts: boolean;
+  /** Scales the line height of card and reply text. */
+  lineSpacing: LineSpacingPreference;
   /**
    * A light that follows the pointer across a card. Web and desktop only:
    * touch platforms have no hover, so the attribute is inert there.
@@ -85,6 +90,8 @@ export const DEFAULT_PREFERENCES: Readonly<EnhancerPreferences> = {
   uiFont: "inter",
   codeFont: "code",
   frostedGlass: true,
+  hostFonts: false,
+  lineSpacing: "compact",
   pointerGlow: true,
   enhancedUserBubble: true,
   selectionActions: true,
@@ -135,6 +142,12 @@ function loadPreferences(): EnhancerPreferences {
       accent: isAccentPreset(candidate.accent) ? candidate.accent : DEFAULT_PREFERENCES.accent,
       uiFont: candidate.uiFont === "system" ? "system" : DEFAULT_PREFERENCES.uiFont,
       codeFont: candidate.codeFont === "plain" ? "plain" : DEFAULT_PREFERENCES.codeFont,
+      hostFonts:
+        typeof candidate.hostFonts === "boolean" ? candidate.hostFonts : DEFAULT_PREFERENCES.hostFonts,
+      lineSpacing:
+        candidate.lineSpacing === "balanced" || candidate.lineSpacing === "spacious"
+          ? candidate.lineSpacing
+          : DEFAULT_PREFERENCES.lineSpacing,
       frostedGlass:
         typeof candidate.frostedGlass === "boolean"
           ? candidate.frostedGlass

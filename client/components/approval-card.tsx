@@ -108,7 +108,7 @@ export function ApprovalCard({ request, tokens, onApprove, onDeny }: ApprovalCar
         rationaleText: {
           fontFamily: tokens.fontUi,
           fontSize: 13,
-          lineHeight: 18,
+          lineHeight: 18 * tokens.leading,
           color: tokens.foreground,
         },
         metaRow: {
@@ -151,7 +151,7 @@ export function ApprovalCard({ request, tokens, onApprove, onDeny }: ApprovalCar
           fontFamily: tokens.fontUi,
           flex: 1,
           fontSize: 12,
-          lineHeight: 16,
+          lineHeight: 16 * tokens.leading,
           color: tokens.warning,
         },
         resolvedBanner: {

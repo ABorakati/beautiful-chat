@@ -302,13 +302,13 @@ export function ToolCallout({
         evalOutputText: {
           fontFamily: tokens.fontMono,
           fontSize: 11.5,
-          lineHeight: 17,
+          lineHeight: 17 * tokens.leading,
           color: tokens.foregroundMuted,
         },
         terminalOutput: {
           fontFamily: tokens.fontMono,
           fontSize: 11.5,
-          lineHeight: 17,
+          lineHeight: 17 * tokens.leading,
           color: tokens.foregroundMuted,
         },
         silentCommandText: {
@@ -433,7 +433,7 @@ export function ToolCallout({
         thinkingText: {
           fontFamily: tokens.fontUi,
           fontSize: 12,
-          lineHeight: 18,
+          lineHeight: 18 * tokens.leading,
           color: tokens.foregroundMuted,
         },
         thinkingStepsList: {
@@ -452,7 +452,7 @@ export function ToolCallout({
           fontFamily: tokens.fontUi,
           flex: 1,
           fontSize: 12,
-          lineHeight: 16,
+          lineHeight: 16 * tokens.leading,
           color: tokens.foregroundMuted,
         },
         // MCP container
@@ -1180,7 +1180,7 @@ function useSubagentStyles(tokens: ExtendedThemeTokens): SubagentStyles {
         contextBody: {
           fontFamily: tokens.fontUi,
           fontSize: 12,
-          lineHeight: 17,
+          lineHeight: 17 * tokens.leading,
           color: tokens.foregroundSubtle,
         },
         row: {
@@ -1201,7 +1201,7 @@ function useSubagentStyles(tokens: ExtendedThemeTokens): SubagentStyles {
         brief: {
           fontFamily: tokens.fontUi,
           fontSize: 12,
-          lineHeight: 16,
+          lineHeight: 16 * tokens.leading,
           color: tokens.foregroundMuted,
         },
         pending: {

@@ -603,7 +603,8 @@ function columnWidths(block: MdTableBlock, metrics: VariantMetrics): number[] {
 }
 
 function buildStyles(tokens: ExtendedThemeTokens, variant: MarkdownVariant): MarkdownStyles {
-  const metrics = VARIANT_METRICS[variant];
+  const base = VARIANT_METRICS[variant];
+  const metrics = { ...base, bodyLineHeight: base.bodyLineHeight * tokens.leading };
   const bodyFont = metrics.mono ? tokens.fontMono : tokens.fontUi;
   const [size1, size2, size3, size4] = metrics.headingSizes;
   // The terminal variant's headings sit within a point of body size, so the

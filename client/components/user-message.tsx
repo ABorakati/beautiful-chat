@@ -166,7 +166,7 @@ export function UserMessage({
         text: {
           fontFamily: tokens.fontUi,
           fontSize: 13.5,
-          lineHeight: 20,
+          lineHeight: 20 * tokens.leading,
           color: tokens.userText,
         },
         foldButton: {

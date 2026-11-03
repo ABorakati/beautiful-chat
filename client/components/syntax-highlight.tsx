@@ -566,7 +566,7 @@ export function SyntaxHighlightBlock({
         },
         filename: {
           fontSize: 12,
-          lineHeight: 17,
+          lineHeight: 17 * tokens.leading,
           fontFamily: tokens.fontUi,
           fontWeight: "600",
           color: tokens.foregroundMuted,
@@ -620,6 +620,7 @@ export function SyntaxHighlightBlock({
         lineNumber: {
           width: 32,
           fontSize: 12,
+          lineHeight: 18 * tokens.leading,
           fontFamily: tokens.fontMono,
           color: tokens.foregroundSubtle,
           textAlign: "right",
@@ -629,7 +630,7 @@ export function SyntaxHighlightBlock({
         lineContent: {
           flex: 1,
           fontSize: 12,
-          lineHeight: 18,
+          lineHeight: 18 * tokens.leading,
           fontFamily: tokens.fontCode,
           color: tokens.foreground,
         },
