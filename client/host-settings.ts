@@ -1,7 +1,10 @@
-/** Paseo's private storage record is not part of the plugin SDK. */
+/** Private Paseo settings. The plugin SDK does not expose this record. */
 export interface HostAppSettings {
   uiFontFamily?: unknown;
   monoFontFamily?: unknown;
+  chatDisplay?: unknown;
+  toolCallDetailLevel?: unknown;
+  compactToolCalls?: unknown;
 }
 
 export function readHostAppSettings(): HostAppSettings {
@@ -14,4 +17,34 @@ export function readHostAppSettings(): HostAppSettings {
   } catch {
     return {};
   }
+}
+
+export function hostFoldsToolCalls(): boolean {
+  const settings = readHostAppSettings();
+  if (settings.chatDisplay !== undefined) {
+    return settings.chatDisplay === "collapseToolCalls" || settings.chatDisplay === "collapseTurns";
+  }
+  const level = settings.toolCallDetailLevel;
+  if (level === "overview" || level === "concise") return true;
+  return level === undefined && settings.compactToolCalls === true;
+}
+
+export function observeHostToolFolding(check: () => void): () => void {
+  try {
+    if (!(globalThis as typeof globalThis & { localStorage?: Storage }).localStorage) return () => {};
+  } catch {
+    return () => {};
+  }
+
+  // ponytail: Polls can lag by 2 s. Use a supported SDK settings API when one exists.
+  const interval = setInterval(check, 2_000);
+  const hostWindow = typeof window === "undefined" ? undefined : window;
+  const hostDocument = typeof document === "undefined" ? undefined : document;
+  hostWindow?.addEventListener("focus", check);
+  hostDocument?.addEventListener("visibilitychange", check);
+  return () => {
+    clearInterval(interval);
+    hostWindow?.removeEventListener("focus", check);
+    hostDocument?.removeEventListener("visibilitychange", check);
+  };
 }

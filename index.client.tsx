@@ -8,7 +8,8 @@ import { installPointerGlow } from "./client/components/glow";
 import { installHostNoticeStyle } from "./client/components/host-notice";
 import { installChatFind } from "./client/components/chat-find";
 import { extractPromptImages } from "./client/prompt-images";
-import { getEnhancerPreferences } from "./client/preferences";
+import { getEnhancerPreferences, subscribeEnhancerPreferences } from "./client/preferences";
+import { hostFoldsToolCalls, observeHostToolFolding } from "./client/host-settings";
 import {
   LiveToolCallRenderer,
   LiveReasoningRenderer,
@@ -45,12 +46,17 @@ export default function contribute(client: PluginClientContext) {
     Component: BeautifulChatSettingsPage,
   });
 
+  let foldsToolCalls = getEnhancerPreferences().paseoToolFolding && hostFoldsToolCalls();
+  let hidesReasoning = foldsToolCalls && !getEnhancerPreferences().overviewReasoning;
+
   // Live chat timeline interception: render real tool calls, reasoning, and todos with enhanced UI.
-  const removeToolTransformer = client.addTimelineTransformer({
+  const registerToolTransformer = () => client.addTimelineTransformer({
     id: "omp-enhanced-tool-call",
     query: { itemType: "tool_call" },
     transform({ item, phase }) {
       if (item.type !== "tool_call") return undefined;
+      // Paseo can fold only its own tool rows. A plugin row breaks the run.
+      if (foldsToolCalls) return undefined;
       return {
         items: [
           {
@@ -70,6 +76,7 @@ export default function contribute(client: PluginClientContext) {
       };
     },
   });
+  let removeToolTransformer = registerToolTransformer();
 
   const removeToolRenderer = client.addTimelineRenderer({
     kind: "omp-tool-call",
@@ -85,11 +92,12 @@ export default function contribute(client: PluginClientContext) {
     Component: LiveToolCallRenderer,
   });
 
-  const removeReasoningTransformer = client.addTimelineTransformer({
+  const registerReasoningTransformer = () => client.addTimelineTransformer({
     id: "omp-enhanced-reasoning",
     query: { itemType: "reasoning" },
     transform({ item, phase }) {
       if (item.type !== "reasoning") return undefined;
+      if (hidesReasoning) return { items: [] };
       return {
         items: [
           {
@@ -105,6 +113,30 @@ export default function contribute(client: PluginClientContext) {
       };
     },
   });
+  let removeReasoningTransformer = registerReasoningTransformer();
+
+  let stopObservingHost: (() => void) | undefined;
+  const refreshToolFolding = () => {
+    const preferences = getEnhancerPreferences();
+    if (preferences.paseoToolFolding) {
+      stopObservingHost ??= observeHostToolFolding(refreshToolFolding);
+    } else {
+      stopObservingHost?.();
+      stopObservingHost = undefined;
+    }
+    const nextFoldsToolCalls = preferences.paseoToolFolding && hostFoldsToolCalls();
+    const nextHidesReasoning = nextFoldsToolCalls && !preferences.overviewReasoning;
+    if (nextFoldsToolCalls === foldsToolCalls && nextHidesReasoning === hidesReasoning) return;
+    foldsToolCalls = nextFoldsToolCalls;
+    hidesReasoning = nextHidesReasoning;
+    // A new transformer identity invalidates Paseo's cached rows.
+    removeToolTransformer();
+    removeReasoningTransformer();
+    removeToolTransformer = registerToolTransformer();
+    removeReasoningTransformer = registerReasoningTransformer();
+  };
+  const unsubscribePreferences = subscribeEnhancerPreferences(refreshToolFolding);
+  refreshToolFolding();
 
   const removeReasoningRenderer = client.addTimelineRenderer({
     kind: "omp-reasoning",
@@ -259,6 +291,8 @@ export default function contribute(client: PluginClientContext) {
   });
 
   return () => {
+    unsubscribePreferences();
+    stopObservingHost?.();
     removeFonts();
     removeFrost();
     removeShimmer();

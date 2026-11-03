@@ -66,6 +66,10 @@ export interface EnhancerPreferences {
   assistantMarkdown: boolean;
   /** Which look the markdown renderer uses. */
   markdownVariant: MarkdownVariantPreference;
+  /** Let Paseo draw tool calls when its Chat display folds them. Web and desktop only. */
+  paseoToolFolding: boolean;
+  /** Show reasoning while Paseo folds tool calls. */
+  overviewReasoning: boolean;
   /** Tool card groups that fold shut once their call finishes. */
   collapseTools: CollapsibleToolGroup[];
   /** A finished card at or under this many lines stays open. Zero folds them all. */
@@ -97,6 +101,8 @@ export const DEFAULT_PREFERENCES: Readonly<EnhancerPreferences> = {
   selectionActions: true,
   assistantMarkdown: true,
   markdownVariant: "document",
+  paseoToolFolding: false,
+  overviewReasoning: true,
   collapseTools: [...COLLAPSIBLE_TOOL_GROUPS],
   collapseLineLimit: 0,
   expandWhileRunning: true,
@@ -172,6 +178,14 @@ function loadPreferences(): EnhancerPreferences {
         candidate.markdownVariant === "compact" || candidate.markdownVariant === "terminal"
           ? candidate.markdownVariant
           : DEFAULT_PREFERENCES.markdownVariant,
+      paseoToolFolding:
+        typeof candidate.paseoToolFolding === "boolean"
+          ? candidate.paseoToolFolding
+          : DEFAULT_PREFERENCES.paseoToolFolding,
+      overviewReasoning:
+        typeof candidate.overviewReasoning === "boolean"
+          ? candidate.overviewReasoning
+          : DEFAULT_PREFERENCES.overviewReasoning,
       collapseTools: collapseToolsFrom(candidate.collapseTools),
       collapseLineLimit: isCollapseLineLimit(candidate.collapseLineLimit)
         ? candidate.collapseLineLimit
@@ -226,12 +240,14 @@ export function resetEnhancerPreferences(): void {
   publish();
 }
 
+export function subscribeEnhancerPreferences(listener: () => void): () => void {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
+
 export function useEnhancerPreferences(): EnhancerPreferences {
   return useSyncExternalStore(
-    (listener) => {
-      listeners.add(listener);
-      return () => listeners.delete(listener);
-    },
+    subscribeEnhancerPreferences,
     getEnhancerPreferences,
     getEnhancerPreferences,
   );

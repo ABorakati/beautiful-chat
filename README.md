@@ -172,6 +172,8 @@ Devicon brand marks, and the file-manager link.
 | Timeline | Collapse length | Fold every selected card, or only cards over 10, 20, or 50 lines. |
 | Timeline | Open while running | Open tool cards while their calls run, then apply the collapse rules. Disable this setting to apply those rules from the start. |
 | Timeline | Fold reasoning summaries | Fold summaries after completion. Disable this setting to keep every summary open. |
+| Timeline | Let Paseo fold tool calls | Off by default. On desktop and web, let Paseo draw calls when its display setting folds them. |
+| Timeline | Show reasoning between folded calls | On by default. Keep reasoning visible while Paseo folds tool calls. |
 | Interaction | Selection actions | Select text to show Copy and Add to chat on desktop and web. Add to chat inserts a quote or code block. |
 
 The live preview uses the real prompt, reasoning, tool, reply, and checklist components with sample data.
@@ -184,6 +186,26 @@ in 0.8 or 0.15. A host change can break this feature without warning. It has no 
 which has no `localStorage`.
 
 ---
+
+## Paseo tool-folding handoff
+
+**Let Paseo fold tool calls** is off by default, so plugin tool cards stay unchanged.
+On web and desktop, enable it with Paseo's **Collapse tool calls** or **Collapse turns** display setting.
+Paseo then folds and draws tool calls instead of plugin cards.
+A Paseo setting change reaches existing rows within about 2 seconds on an active client.
+The plugin checks host settings only while **Let Paseo fold tool calls** is on.
+
+Plugin-owned rows interrupt a fold of consecutive host tool calls.
+**Show reasoning between folded calls** is on by default, so thoughts stay visible during handoff.
+Turn it off to hide reasoning during handoff and let adjacent tool calls fold together.
+This setting has no effect outside handoff.
+
+Summary first shipped in [Paseo 0.1.108](https://github.com/getpaseo/paseo/pull/2031).
+Since 0.13, Paseo uses `chatDisplay` for **Collapse tool calls** and **Collapse turns**.
+The plugin reads the private `localStorage` key `@paseo:app-settings`.
+The SDK exposes no host settings API in 0.8 or 0.15.
+A host key or data shape change can silently stop handoff.
+These settings have no effect on iOS or Android because those clients have no `localStorage`.
 
 ## Finding text
 
@@ -246,8 +268,9 @@ timestamp, item}`, and plugin navigation offers only `openSettings`, `openSurfac
 3. **Interception is all or nothing.** A transformer replaces the host item completely. There is no
    way to decorate an item or keep host affordances that the plugin does not reimplement. Returning
    `undefined` is the only opt-out.
-4. **Transform results are cached per item.** Changing a preference does not re-run transformers for
-   items already on screen. New items follow the change; existing ones need a reload.
+4. **Transform results are cached by transformer function and item.** A preference change alone does
+   not re-run transformers for existing items. Workaround: the handoff re-registers the tool and
+   reasoning transformers with fresh functions, so existing rows update without a reload.
 5. **Renderers get no workspace.** Props carry `agentId` only, so `cwd` and `workspaceId` need a
    second lookup through `useAgent`.
 6. **Token usage is live-only.** Usage is not persisted on timeline items, so a turn this client did

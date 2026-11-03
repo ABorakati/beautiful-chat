@@ -558,6 +558,23 @@ export function BeautifulChatSettingsPage({ theme }: PluginSurfaceProps) {
               tokens={tokens}
             />
             <ToggleRow
+              title="Let Paseo fold tool calls"
+              description="Paseo draws tool calls when its Chat display folds them."
+              chip="Desktop & web"
+              value={preferences.paseoToolFolding}
+              onChange={(paseoToolFolding) => updateEnhancerPreferences({ paseoToolFolding })}
+              tokens={tokens}
+            />
+            {preferences.paseoToolFolding && (
+              <ToggleRow
+                title="Show reasoning between folded calls"
+                description="Off hides reasoning only while Paseo folds tool calls."
+                value={preferences.overviewReasoning}
+                onChange={(overviewReasoning) => updateEnhancerPreferences({ overviewReasoning })}
+                tokens={tokens}
+              />
+            )}
+            <ToggleRow
               title="Fold reasoning summaries"
               description="Fold reasoning summaries after completion. Disable this setting to keep every summary open."
               value={preferences.collapseReasoning}
@@ -586,6 +603,7 @@ export function BeautifulChatSettingsPage({ theme }: PluginSurfaceProps) {
         </View>
         {wide ? preview : null}
       </View>
+
     </View>
   );
 }
