@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import type { ViewProps } from "react-native";
 
 const STYLE_ELEMENT_ID = "beautiful-chat-frosted";
@@ -15,6 +16,12 @@ const STYLE_ELEMENT_ID = "beautiful-chat-frosted";
 const FROSTED_RULE = `[data-ompfrost] {
   -webkit-backdrop-filter: blur(14px) saturate(150%);
   backdrop-filter: blur(14px) saturate(150%);
+}
+/* Turning the setting off paints surfaces solid, so a blur behind them would
+   be invisible yet still re-filtered on every repaint. Drop it outright. */
+[data-ompfrost-off] [data-ompfrost] {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }`;
 
 /**
@@ -47,3 +54,16 @@ export function installFrostedGlass(): () => void {
 export const frosted = {
   dataSet: { ompfrost: true },
 } as unknown as ViewProps;
+
+/**
+ * Honours the setting without re-rendering a surface: one attribute on the
+ * document root switches the blur off, the same way the pointer glow does.
+ */
+export function useFrostedGlass(enabled: boolean): void {
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const root = document.documentElement;
+    if (enabled) root.removeAttribute("data-ompfrost-off");
+    else root.setAttribute("data-ompfrost-off", "");
+  }, [enabled]);
+}

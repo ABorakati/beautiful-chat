@@ -456,14 +456,14 @@ export function ToolCallout({
     >
       <Pressable onPress={() => setExpanded((p) => !p)} style={styles.header}>
         <View style={styles.headerLeft}>
-          <Breathe depth={1.08} durationMs={1800}>
+          <Breathe active={isRunning} depth={1.08} durationMs={1800}>
             <Glyph name={getToolIconName(data.tool)} size={13} color={iconColor} />
           </Breathe>
           <Text selectable style={styles.toolPill}>
             {data.tool === "generic" ? "tool" : data.tool}
           </Text>
           {data.filePath ? (
-            <Breathe depth={1.08} durationMs={1800}>
+            <Breathe active={isRunning} depth={1.08} durationMs={1800}>
               {isImagePath(data.filePath) ? (
                 // An image has no language logo to show, and the generic page
                 // mark says less than the picture mark does.
@@ -519,7 +519,7 @@ export function ToolCallout({
           )}
 
           <Rotate active={expanded}>
-            <Breathe depth={1.08} durationMs={1800}>
+            <Breathe active={isRunning} depth={1.08} durationMs={1800}>
               <Glyph name="ChevronDown" size={16} color={tokens.foregroundMuted} />
             </Breathe>
           </Rotate>

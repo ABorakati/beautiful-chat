@@ -14,6 +14,7 @@ import { promptRowAnchor } from "./components/prompt-anchor";
 import { surfaceProps } from "./components/view-props";
 import { useSelectionActions } from "./components/selection-actions";
 import { usePointerGlow } from "./components/glow";
+import { useFrostedGlass } from "./components/frosted";
 import type { TurnUsage } from "./components/user-message";
 import { NoticeCallout } from "./components/notice-callout";
 import { useEnhancerPreferences } from "./preferences";
@@ -430,6 +431,7 @@ export function LiveToolCallRenderer({
   );
   useSelectionActions(tokens, preferences.selectionActions);
   usePointerGlow(preferences.pointerGlow);
+  useFrostedGlass(preferences.frostedGlass);
   const data = item.data;
 
   const calloutData = useMemo((): ToolCalloutData => {
@@ -686,6 +688,7 @@ export function LiveReasoningRenderer({
   );
   useSelectionActions(tokens, preferences.selectionActions);
   usePointerGlow(preferences.pointerGlow);
+  useFrostedGlass(preferences.frostedGlass);
   const data = item.data;
   // The host owns the reveal cadence, so streamed reasoning animates the same
   // way it does in the native timeline instead of appearing in whole blocks.
@@ -752,6 +755,7 @@ export function LiveTodoRenderer({ item, theme }: PluginTimelineItemProps<LiveTo
   );
   useSelectionActions(tokens, preferences.selectionActions);
   usePointerGlow(preferences.pointerGlow);
+  useFrostedGlass(preferences.frostedGlass);
   const data = item.data;
 
   const taskListData: TaskListData = useMemo(() => {
@@ -805,6 +809,7 @@ export function LiveAssistantRenderer({
   );
   useSelectionActions(tokens, preferences.selectionActions);
   usePointerGlow(preferences.pointerGlow);
+  useFrostedGlass(preferences.frostedGlass);
 
   // Replacing the reply costs the host's footer, which the stream layout hangs
   // off an `assistant_message` item that no longer exists. Rebuild it where the
@@ -851,6 +856,7 @@ export function LiveNoticeRenderer({ item, theme }: PluginTimelineItemProps<Live
   );
   useSelectionActions(tokens, preferences.selectionActions);
   usePointerGlow(preferences.pointerGlow);
+  useFrostedGlass(preferences.frostedGlass);
   const data = item.data;
   const level = data.level === "warning" || data.level === "error" ? data.level : "info";
 
@@ -899,6 +905,7 @@ export function LiveUserMessageRenderer({
   );
   useSelectionActions(tokens, preferences.selectionActions);
   usePointerGlow(preferences.pointerGlow);
+  useFrostedGlass(preferences.frostedGlass);
   const paseo = usePaseo();
   const handle = useMemo(() => paseo.agents.ref(agentId), [paseo, agentId]);
 
