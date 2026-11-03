@@ -24,7 +24,7 @@ import { buildHubData } from "./hub-details";
 import { publishHubSnapshot } from "./hub-activity";
 import { MarkdownView } from "./components/markdown/markdown-view";
 import { TimelineTailHub } from "./components/hub-live";
-import { ChecklistFeed, toTaskListData, useIsNewestChecklist } from "./components/checklist-live";
+import { ChecklistFeed, toTaskListData, useChecklistRowVisible } from "./components/checklist-live";
 import { AssistantFooter } from "./components/turn-footer";
 import { SystemCard } from "./components/system-card";
 import { parseSystemEnvelope } from "./system-envelope";
@@ -66,6 +66,7 @@ export interface LiveReasoningPayload {
 
 export interface LiveTodoPayload {
   items: Array<Record<string, unknown>>;
+  key: string;
 }
 
 export interface LiveNoticePayload {
@@ -799,12 +800,11 @@ export function LiveReasoningRenderer({
   );
 }
 
-/** Draws only the newest known checklist when the live setting is on. */
+/** Keeps cards visible unless the feed identifies a newer checklist for this agent. */
 export function LiveTodoRenderer({
   agentId,
   item,
   theme,
-  timestamp,
 }: PluginTimelineItemProps<LiveTodoPayload>) {
   const preferences = useEnhancerPreferences();
   const tokens = useMemo(
@@ -815,13 +815,12 @@ export function LiveTodoRenderer({
   usePointerGlow(preferences.pointerGlow);
   useFrostedGlass(preferences.frostedGlass);
   const taskListData = useMemo(() => toTaskListData(item.data.items), [item.data.items]);
-  const isNewest = useIsNewestChecklist(
+  const visible = useChecklistRowVisible(
     agentId,
-    item.data.items,
-    timestamp.getTime(),
+    item.data.key,
     preferences.liveChecklist,
   );
-  if (preferences.liveChecklist && !isNewest) return null;
+  if (!visible) return null;
 
   return (
     <View {...hostFontEscape}>

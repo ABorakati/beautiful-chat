@@ -21,8 +21,23 @@ interface TaskListProps {
 
 export function TaskList({ data, tokens, onToggleTask }: TaskListProps) {
   const [tasks, setTasks] = useState<TaskItemData[]>(data.tasks);
-  // Each checklist update replaces the task data without a new component.
-  useEffect(() => setTasks(data.tasks), [data.tasks]);
+  const previousIncomingTasks = useRef(data.tasks);
+  // Keep local toggles until the incoming task content changes.
+  useEffect(() => {
+    const previous = previousIncomingTasks.current;
+    previousIncomingTasks.current = data.tasks;
+    if (
+      previous.length !== data.tasks.length ||
+      data.tasks.some((task, index) => {
+        const prior = previous[index];
+        return !prior || task.id !== prior.id || task.title !== prior.title ||
+          task.phase !== prior.phase || task.status !== prior.status ||
+          task.duration !== prior.duration || task.blockerReason !== prior.blockerReason;
+      })
+    ) {
+      setTasks(data.tasks);
+    }
+  }, [data.tasks]);
   const [expandedBlockedId, setExpandedBlockedId] = useState<string | null>(null);
 
   const completedCount = tasks.filter((t) => t.status === "completed").length;

@@ -125,8 +125,17 @@ A collapsible trace with a connected step rail, per-step duration, and a token t
 
 Phase name, per-task status, durations, and a blocked task with its reason.
 
-Live checklist is on by default. Each agent shows only its newest update where it arrived and removes earlier updates.
-The plugin reads the agent's timeline even when the newest update is outside the visible rows.
+Live checklist is on by default. The plugin hides a checklist only when its agent feed identifies a newer update.
+Cards stay visible while the feed is not ready, scans history, finds no matching list, or reports an error.
+The plugin retries failed feeds after 500 ms and doubles the delay to a 10-second maximum.
+The 0.15 SDK exposes no row ID or sequence number to todo renderers. Host timestamps do not identify todo updates.
+The plugin compares task content instead. Unknown content stays visible.
+The transformer removes older content when no observed agent needs it as its newest checklist.
+This removes the empty host wrapper for those older updates. Refreshes occur at most once per frame (16 ms).
+If another agent still needs the same content, the renderer hides only its agent's older card. A host wrapper can remain.
+An unanswered feed prevents transformer suppression. A complete empty history does not block other agents.
+Identical updates of the newest list stay visible because the SDK cannot distinguish them.
+The plugin removes cached feed data after the last row for that agent unmounts.
 Turn the setting off to show each update.
 
 ![Checklist](docs/images/tasks.png)
