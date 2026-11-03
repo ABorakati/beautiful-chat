@@ -5,6 +5,7 @@ import { useRevealedText } from "@getpaseo/plugin/client/react-native";
 import type { PluginTimelineItemProps } from "@getpaseo/plugin/client";
 import type { PluginTheme } from "@getpaseo/plugin";
 import { buildThemeTokens } from "./components/theme-tokens";
+import { buildUnifiedDiffText } from "./components/diff-text";
 import { ToolCallout } from "./components/tool-callouts";
 import { ReasoningTrace } from "./components/reasoning-trace";
 import { TaskList } from "./components/task-list";
@@ -471,11 +472,25 @@ export function LiveToolCallRenderer({
       (typeof output === "string" ? output : undefined) ||
       (typeof input.content === "string" ? input.content : undefined);
 
-    // Universal diff extraction
+    // Universal diff extraction. A provider that ships an edit as before and
+    // after text instead of a patch — opencode among them — gets the same
+    // treatment the host's own view gives it: the diff is computed from the
+    // pair, so the card shows the change rather than the tool's summary line.
+    const editOld =
+      (typeof detail.oldString === "string" ? detail.oldString : undefined) ??
+      (typeof input.oldString === "string" ? input.oldString : undefined);
+    const editNew =
+      (typeof detail.newString === "string" ? detail.newString : undefined) ??
+      (typeof input.newString === "string" ? input.newString : undefined);
+    const computedEditDiff: string | undefined =
+      editOld !== undefined || editNew !== undefined
+        ? buildUnifiedDiffText(editOld ?? "", editNew ?? "")
+        : undefined;
     const diff: string | undefined =
       (typeof detail.unifiedDiff === "string" ? detail.unifiedDiff : undefined) ||
       (typeof detail.diff === "string" ? detail.diff : undefined) ||
-      extractStringProp(output, "diff");
+      extractStringProp(output, "diff") ||
+      computedEditDiff;
 
     // A tool that answers with content blocks carries its prose in
     // `content[0].text`. That text is allowed to be empty — a `hub wait` job
