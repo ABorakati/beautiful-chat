@@ -1,10 +1,11 @@
-import { spawn } from "node:child_process";
 import { open, stat, type FileHandle } from "node:fs/promises";
-import { dirname, isAbsolute, resolve } from "node:path";
+import { isAbsolute, resolve } from "node:path";
 import type { PluginServerContext } from "@getpaseo/plugin/server";
 import { revealPathRpc, stripSelector } from "./shared/file-rpc";
 import { type HighlightLine, type HighlightToken, highlightRpc } from "./shared/highlight-rpc";
 import { imageRpc } from "./shared/image-rpc";
+import { openWithShell, revealWithShell } from "./server/path-launcher";
+import { enforceOpenPolicy, inspectOpenTarget, resolveOpenPath } from "./server/path-open-policy";
 
 /**
  * Image types worth inlining, and the mime each one needs in its data URI.
@@ -84,53 +85,6 @@ function readImageSize(bytes: Buffer, kind: string): { width: number; height: nu
   return null;
 }
 
-/** The time allowed for `open` or `xdg-open` to report an exit failure. */
-const LAUNCH_GRACE_MS = 3000;
-
-/**
- * Starts a detached platform helper and reports start errors.
- * Non-zero exits within the grace period also fail, except for Explorer.
- * Explorer can exit non-zero after success and requires verbatim quotes.
- */
-function launch(command: string, args: string[], explorer = false): Promise<void> {
-  // The ES2023 library does not include `Promise.withResolvers`.
-  return new Promise((done, fail) => {
-    const child = spawn(command, args, {
-      detached: true,
-      stdio: "ignore",
-      windowsVerbatimArguments: explorer,
-    });
-    child.once("error", fail);
-    child.once("spawn", () => {
-      child.unref();
-      if (explorer) return done();
-      const timer = setTimeout(done, LAUNCH_GRACE_MS);
-      child.once("exit", (code, signal) => {
-        clearTimeout(timer);
-        if (code === 0) done();
-        else fail(new Error(`${command} exited with ${code ?? signal}`));
-      });
-    });
-  });
-}
-/**
- * Reveals a path with the platform shell.
- * macOS always uses -R so an app bundle cannot launch through Reveal.
- * Other Unix platforms open the parent directory of a file.
- */
-function revealWithShell(target: string, isDirectory: boolean): Promise<void> {
-  if (process.platform === "win32") {
-    return launch("explorer.exe", [isDirectory ? `"${target}"` : `/select,"${target}"`], true);
-  }
-  if (process.platform === "darwin") return launch("open", ["-R", target]);
-  return launch("xdg-open", [isDirectory ? target : dirname(target)]);
-}
-
-/** Opens a path with its default app. */
-function openWithShell(target: string): Promise<void> {
-  if (process.platform === "win32") return launch("explorer.exe", [`"${target}"`], true);
-  return launch(process.platform === "darwin" ? "open" : "xdg-open", [target]);
-}
 
 const DARK_THEME = "github-dark-default";
 const LIGHT_THEME = "github-light-default";
@@ -457,19 +411,35 @@ function tokenize(
 }
 
 export default function contribute(server: PluginServerContext) {
-  server.handle(revealPathRpc, async (input) => {
-    const requested = stripSelector(input.path);
-    if (!requested) return { revealed: null, error: "No path" };
+  server.handle(revealPathRpc, async (input, { paseo }) => {
+    const empty = { revealed: null, launch: null, policy: null };
+    const requested = input.open ? input.path : stripSelector(input.path);
+    if (!requested) return { ...empty, error: "No path" };
 
-    // `resolve` converts forward slashes to backslashes on Windows for Explorer.
-    const target = resolve(input.cwd, requested);
     try {
-      const entry = await stat(target);
-      await (input.open ? openWithShell(target) : revealWithShell(target, entry.isDirectory()));
-      return { revealed: target, error: null };
+      let agentCwd: string | null = null;
+      if (input.agentId) {
+        // A failed lookup leaves the folder unknown and requires confirmation.
+        const snapshot = await paseo.agents.ref(input.agentId).refresh().catch(() => null);
+        agentCwd = snapshot?.agent.cwd ?? null;
+      }
+      const target = resolveOpenPath(requested, agentCwd || input.cwd || null);
+      if (input.open || input.check) {
+        const policy = await inspectOpenTarget(target, agentCwd);
+        if (input.check) return { ...empty, policy, error: null };
+        if (input.confirmed && resolve(policy.path) !== target) {
+          throw new Error("The target changed. Confirm the open again.");
+        }
+        enforceOpenPolicy(policy, input.confirmed);
+        const launch = await openWithShell(policy.path);
+        return { revealed: policy.path, launch, policy, error: null };
+      }
+      await stat(target);
+      const launch = await revealWithShell(target);
+      return { ...empty, revealed: target, launch, error: null };
     } catch (error) {
       return {
-        revealed: null,
+        ...empty,
         error: error instanceof Error ? error.message : String(error),
       };
     }

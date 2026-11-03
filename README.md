@@ -205,45 +205,74 @@ match inside one of them.
 
 ## Opening files
 
-A file name in a read, write, edit, or code block is a link. Press it to show the path in the file manager.
-The plugin's daemon RPC (`file.reveal`) resolves the path against the agent's current directory.
+A file name in a read, write, edit, or code block is a link.
+Press it to show the path in the file manager.
+The path menu sends the agent ID and working folder when the renderer supplies them.
+The daemon reads the agent's current working folder through the Paseo SDK.
 
 | Platform | Show in File Manager                                  | Open in Default App          |
 | -------- | ----------------------------------------------------- | ---------------------------- |
-| Windows  | `explorer.exe /select,"<file>"` selects the file.      | `explorer.exe "<path>"`       |
+| Windows  | `explorer.exe /select,"<path>"` selects the path.     | `explorer.exe "<path>"`       |
 | macOS    | `open -R <path>` selects the path in Finder.           | `open <path>`                |
 | Other    | `xdg-open <directory>` opens the parent directory.     | `xdg-open <path>`            |
 
-A directory path opens that directory on Windows and Linux. The action runs on the daemon machine, not on the client machine.
-macOS always reveals the path with `open -R`, including an app bundle. **Show in File Manager** cannot launch that bundle.
+Reveal always selects the target on Windows and opens its parent directory on Linux, including directory targets.
+All actions run on the computer that runs the Paseo daemon, not on the client.
+macOS always reveals the path with `open -R`, including an app bundle.
+**Show in File Manager** cannot launch that bundle and needs no confirmation.
 
 On desktop and web, right-click a path link or inline code that contains an absolute path.
 The menu offers **Copy Selection** when text is selected, **Copy Path**, **Open in Default App**, and **Show in File Manager**.
-A relative path offers only **Copy Path**, because the menu has no agent directory.
+A relative path offers open and reveal actions only when the renderer supplies the agent's working folder.
 A missing path or a launch error shows a message for five seconds.
-The macOS and Linux launchers report a non-zero exit within three seconds.
-Explorer can report a non-zero exit after success, so the plugin does not treat that exit as an error.
 
-**Open in Default App** first shows a confirmation dialog with the full target path.
-**Cancel** has focus. Press Escape or **Cancel** to close the dialog without an RPC.
-Select **Don't ask again**, then press **Open**, to skip later questions for ordinary files.
-Turn on **Ask before opening files** in the plugin settings to restore the question.
-This setting defaults to on. It applies to the client, not to direct daemon RPC calls.
-**Show in File Manager** needs no confirmation.
+**Open in Default App** first asks the daemon to inspect the path without a launch.
+The daemon uses `realpath` and checks the resolved target, not a symlink name.
+The dialog shows that target and says which computer opens it.
+**Cancel** has focus. Press Escape or **Cancel** to cancel the launch.
+Only **Open** in a dialog without a checkbox sends `confirmed: true`.
+The ordinary dialog and the safe-file bypass send no confirmation flag.
+The daemon repeats the policy check before each launch, including direct RPC calls.
+An open uses the exact resolved path without another selector removal.
+The daemon rejects a confirmed path if the final check resolves it to a different target.
+On macOS, `open` and LaunchServices resolve the path again after that check.
+A file or handler change in that interval can still change what opens.
 
-Executables and scripts always show a warning and require confirmation, even when the setting is off.
-Their dialog has no **Don't ask again** checkbox. The extension list is case-insensitive:
+Only these ASCII file extensions can open without the code warning. Letter case does not matter:
 
-`exe`, `com`, `bat`, `cmd`, `ps1`, `psm1`, `vbs`, `vbe`, `js`, `jse`, `wsf`, `wsh`,
-`msi`, `msp`, `scr`, `pif`, `lnk`, `url`, `reg`, `hta`, `cpl`, `jar`, `sh`, `bash`,
-`zsh`, `command`, `app`, `appimage`, `run`, `desktop`, `py`, `pl`, `rb`.
+- Images: `png`, `jpg`, `jpeg`, `gif`, `webp`, `avif`, `bmp`, `ico`, `tif`, `tiff`, `heic`, `heif`.
+- Text and data: `txt`, `text`, `md`, `markdown`, `rst`, `log`, `csv`, `tsv`, `json`, `jsonl`, `ndjson`, `yaml`, `yml`, `toml`, `ini`.
+- Documents: `pdf`.
+- Audio: `mp3`, `wav`, `ogg`, `oga`, `flac`, `aac`, `m4a`, `opus`, `aif`, `aiff`, `wma`.
+- Video: `mp4`, `webm`, `mkv`, `mov`, `m4v`, `avi`, `mpg`, `mpeg`, `ogv`, `3gp`, `wmv`.
 
-A path with no extension does not trigger this rule, including on macOS and Linux.
-The extension check does not inspect file contents or executable permission bits.
+The client and daemon use the same allowlist in `shared/path-open-policy.ts`.
+Every other extension, a path without an extension, and a directory require confirmation.
+Any Unix executable permission bit requires confirmation, even when the file has an allowlisted extension.
+The extension check keeps trailing dots and spaces and rejects non-ASCII extension characters.
+On macOS, `com.apple.LaunchServices.OpenWith` and `com.apple.FinderInfo` attributes require confirmation.
+FinderInfo can mark a Finder alias. The daemon treats every FinderInfo attribute as risky, even without the alias flag.
+If the daemon cannot read the macOS attributes, it rejects the open.
+A safe extension does not prove that file contents or the default app are safe.
 Only open files that you trust.
 
-The dialog applies the daemon's selector rule (`shared/file-rpc.ts`), resolves `.` and `..` segments, and shows the result.
-The executable check and the Open RPC use that same target.
+A target outside the agent's resolved working folder always requires confirmation.
+The dialog flags it as **outside the working folder** and has no **Don't ask again** checkbox.
+Risky types also have no checkbox.
+If the daemon cannot read the agent's working folder, every open requires confirmation.
+The client-supplied folder can resolve a relative path but cannot bypass this rule.
+
+For safe files inside the working folder, select **Don't ask again**, then press **Open**, to skip later questions.
+Turn on **Ask before opening files** in the plugin settings to restore the question.
+This setting defaults to on.
+Path normalization keeps UNC and Windows namespace prefixes (`\\server\share`, `//server/share`, `\\.\`, `\\?\`, `//./`, and `//?/`).
+An inspection of a UNC path can send network credentials before the confirmation dialog appears.
+
+The macOS launcher reports a nonzero exit, a signal, or a three-second timeout as an error.
+The Linux launcher reports an early failure but reports only `started` at three seconds because `xdg-open` can wait for its app.
+Explorer can report a nonzero exit after success, so its RPC result reports only `started`, not completed.
+Explorer spawn errors reach the client.
+Actual macOS and Linux launchers remain untested.
 
 Web links with `http`, `https`, or `mailto` use real anchors in replies.
 The host can offer link-address actions. A normal press still uses Paseo's external opener.

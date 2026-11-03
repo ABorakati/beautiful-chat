@@ -1,10 +1,9 @@
 import type { PluginClientContext } from "@getpaseo/plugin/client";
 import { copyText } from "@getpaseo/plugin/client/ui";
-import { Platform, type TextProps } from "react-native";
-import { revealPathRpc, stripSelector } from "../../shared/file-rpc";
+import { Platform, type TextProps, type ViewProps } from "react-native";
+import { revealPathRpc, type OpenPathPolicy } from "../../shared/file-rpc";
 import { getEnhancerPreferences, updateEnhancerPreferences } from "../preferences";
-import { isAllowedLink } from "./open-link";
-import { isExecutablePath, normalizeOpenPath } from "./path-open-policy";
+import { isSafeOpenPath, normalizeOpenPath, requiresOpenConfirmation } from "../../shared/path-open-policy";
 import { radius } from "./theme-tokens";
 
 const GAP = 8;
@@ -15,6 +14,32 @@ export function pathTargetProps(text: string): TextProps | null {
   return Platform.OS === "web" && ABSOLUTE_PATH.test(text)
     ? ({ dataSet: { bcpath: text } } as unknown as TextProps)
     : null;
+}
+
+/** Attach the agent folder to path targets inside this renderer. */
+export function pathContextProps(agentId: string, cwd: string | null | undefined): ViewProps | null {
+  return Platform.OS === "web"
+    ? ({ dataSet: { bcagent: agentId, bccwd: cwd ?? "" } } as unknown as ViewProps)
+    : null;
+}
+
+interface PathContext {
+  cwd: string;
+  agentId?: string;
+}
+
+/** Leave host routes to the host. Unix paths need a plugin marker or file URL. */
+function filePathFromAnchor(href: string): string | null {
+  if (/^(?:[a-zA-Z]:[\\/]|\\\\)/.test(href)) return href;
+  if (!/^file:\/\//i.test(href)) return null;
+  try {
+    const url = new URL(href);
+    const path = decodeURIComponent(url.pathname);
+    if (url.hostname && url.hostname !== "localhost") return `//${url.hostname}${path}`;
+    return /^\/[a-zA-Z]:\//.test(path) ? path.slice(1) : path;
+  } catch {
+    return null;
+  }
 }
 
 const MENU_CSS = `
@@ -134,22 +159,21 @@ export function installPathLinkMenu(client: PluginClientContext): () => void {
     errorTimer = window.setTimeout(hide, 5000);
   };
 
-  const shell = (path: string, open: boolean) => {
+  const shell = (path: string, context: PathContext, open: boolean, confirmed?: true) => {
     client
-      .rpc(revealPathRpc, { cwd: "", path, open })
+      .rpc(revealPathRpc, { ...context, path, open, ...(confirmed ? { confirmed } : {}) })
       .then((result) => {
         if (result.error) showError(`Could not ${open ? "open" : "show"} ${path}: ${result.error}`);
       })
       .catch((error: unknown) => showError(`Could not ${open ? "open" : "show"} ${path}: ${String(error)}`));
   };
 
-  const confirmOpen = (requested: string) => {
-    // Match the daemon's target before the extension check and confirmation.
-    const path = normalizeOpenPath(stripSelector(requested));
-    const executable = isExecutablePath(path);
-    // The client asks before this RPC. The daemon does not enforce confirmation.
-    if (!executable && !getEnhancerPreferences().confirmOpenPath) {
-      shell(path, true);
+  const showOpenDialog = (policy: OpenPathPolicy, context: PathContext) => {
+    const path = policy.path;
+    const risky = policy.risky || !isSafeOpenPath(path);
+    const alwaysAsk = requiresOpenConfirmation({ ...policy, risky });
+    if (!alwaysAsk && !getEnhancerPreferences().confirmOpenPath) {
+      shell(path, context, true);
       return;
     }
 
@@ -163,37 +187,56 @@ export function installPathLinkMenu(client: PluginClientContext): () => void {
     target.className = "path";
     target.dir = "ltr";
     target.textContent = path;
-    dialog.append(title, target);
+    const location = document.createElement("p");
+    location.id = "open-path-location";
+    location.className = "path";
+    location.textContent = "The file opens on the computer that runs the Paseo daemon.";
+    dialog.append(title, target, location);
+    dialog.setAttribute("aria-describedby", "open-path-target open-path-location");
 
     const remember = document.createElement("input");
     remember.type = "checkbox";
-    if (executable) {
+    if (alwaysAsk) {
       const warning = document.createElement("p");
       warning.id = "open-path-warning";
       warning.className = "warning";
-      warning.textContent = "This executable or script can run code on the daemon machine. Open it only if you trust it.";
+      const warnings: string[] = [];
+      if (risky) warnings.push("This file can run code. Open it only if you trust it.");
+      if (policy.outsideWorkingFolder === true) warnings.push("This path is outside the working folder.");
+      if (policy.outsideWorkingFolder === null) warnings.push("The agent's working folder is unknown. Every open requires confirmation.");
+      warning.textContent = warnings.join(" ");
       dialog.appendChild(warning);
-      dialog.setAttribute("aria-describedby", "open-path-target open-path-warning");
+      dialog.setAttribute("aria-describedby", "open-path-target open-path-location open-path-warning");
     } else {
       const label = document.createElement("label");
       label.className = "remember";
       label.append(remember, "Don't ask again");
       dialog.appendChild(label);
-      dialog.setAttribute("aria-describedby", "open-path-target");
     }
     const actions = document.createElement("div");
     actions.className = "actions";
     const cancel = buttonFor("Cancel", () => {});
     cancel.autofocus = true;
     actions.append(cancel, buttonFor("Open", () => {
-      if (!executable && remember.checked) updateEnhancerPreferences({ confirmOpenPath: false });
-      shell(path, true);
+      if (!alwaysAsk && remember.checked) updateEnhancerPreferences({ confirmOpenPath: false });
+      shell(path, context, true, alwaysAsk ? true : undefined);
     }));
     dialog.appendChild(actions);
     menu.style.display = "none";
     host.style.setProperty("display", "block", "important");
     dialog.showModal();
     cancel.focus();
+  };
+
+  const confirmOpen = (requested: string, context: PathContext) => {
+    const path = normalizeOpenPath(requested);
+    client.rpc(revealPathRpc, { ...context, path, check: true })
+      .then((result) => {
+        if (disposed) return;
+        if (result.error) showError(`Could not open ${path}: ${result.error}`);
+        else if (result.policy) showOpenDialog(result.policy, context);
+      })
+      .catch((error: unknown) => showError(`Could not open ${path}: ${String(error)}`));
   };
 
   const onContextMenu = (event: MouseEvent) => {
@@ -205,8 +248,15 @@ export function installPathLinkMenu(client: PluginClientContext): () => void {
     const target = event.target as Element | null;
     const marked = target?.closest?.("[data-bcpath]");
     const link = marked ?? target?.closest?.("a[href]");
-    const path = marked?.getAttribute("data-bcpath") ?? link?.getAttribute("href") ?? "";
-    if (!link || !path || (!marked && isAllowedLink(path))) return;
+    const requested = marked?.getAttribute("data-bcpath");
+    const path = requested && !/^file:\/\//i.test(requested)
+      ? requested : filePathFromAnchor(requested ?? link?.getAttribute("href") ?? "");
+    if (!link || !path) return;
+    const surface = target?.closest?.("[data-bcagent]");
+    const context: PathContext = {
+      cwd: surface?.getAttribute("data-bccwd") ?? "",
+      agentId: surface?.getAttribute("data-bcagent") ?? undefined,
+    };
     // Read now. A menu press can collapse the text selection.
     const selected = document.getSelection()?.toString() ?? "";
 
@@ -216,10 +266,10 @@ export function installPathLinkMenu(client: PluginClientContext): () => void {
     menu.style.display = "flex";
     if (selected) addItem("Copy Selection", () => void copyText(selected));
     addItem("Copy Path", () => void copyText(path));
-    // Relative paths get Copy only because this document listener has no agent cwd.
-    if (ABSOLUTE_PATH.test(path)) {
-      addItem("Open in Default App", () => confirmOpen(path));
-      addItem("Show in File Manager", () => shell(path, false));
+    // Without an agent folder, relative paths remain copy-only.
+    if (ABSOLUTE_PATH.test(path) || context.cwd) {
+      addItem("Open in Default App", () => confirmOpen(path, context));
+      addItem("Show in File Manager", () => shell(path, context, false));
     }
 
     for (const [name, value] of Object.entries(paletteFor(getComputedStyle(link).color))) {

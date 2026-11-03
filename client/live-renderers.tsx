@@ -12,6 +12,7 @@ import { ReasoningTrace } from "./components/reasoning-trace";
 import { TaskList } from "./components/task-list";
 import { UserMessage } from "./components/user-message";
 import { hostFontEscape } from "./components/host-font-escape";
+import { pathContextProps } from "./components/path-link-menu";
 import { promptRowAnchor } from "./components/prompt-anchor";
 import { surfaceProps } from "./components/view-props";
 import { useSelectionActions } from "./components/selection-actions";
@@ -699,7 +700,7 @@ export function LiveToolCallRenderer({
   );
 
   return (
-    <View {...hostFontEscape}>
+    <View {...surfaceProps(hostFontEscape, pathContextProps(agentId, cwd) ?? {})}>
       <ToolCallout
         data={calloutData}
         tokens={tokens}
@@ -866,7 +867,7 @@ export function LiveAssistantRenderer({
   const envelope = useMemo(() => parseSystemEnvelope(item.data.text), [item.data.text]);
 
   return (
-    <View {...hostFontEscape}>
+    <View {...surfaceProps(hostFontEscape, pathContextProps(agentId, cwd) ?? {})}>
       {envelope ? (
         <SystemCard envelope={envelope} tokens={tokens} />
       ) : (
