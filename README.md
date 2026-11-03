@@ -318,6 +318,7 @@ Rebuild the screenshots after a visual change:
 ```bash
 esbuild .showcase/showcase.tsx --bundle --outfile=.showcase/showcase.js --jsx=automatic \
   --alias:react-native=react-native-web \
+  --alias:@getpaseo/plugin/client=./.showcase/shims/plugin-client.tsx \
   --alias:@getpaseo/plugin/client/react-native=./.showcase/shims/plugin-react-native.tsx \
   --alias:@getpaseo/plugin/client/ui=./.showcase/shims/plugin-react-native.tsx
 ```
