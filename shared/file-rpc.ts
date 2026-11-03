@@ -7,12 +7,8 @@ export function stripSelector(path: string): string {
 }
 
 /**
- * Shows a path in the machine's own file manager.
- *
- * The client cannot reach the operating system, and Paseo exposes no file
- * navigation to plugins, so the daemon side does the work: it resolves the
- * path against the agent's working directory and asks the platform shell to
- * reveal it.
+ * Shows a path in the daemon's file manager, or opens it with its default app when `open` is true.
+ * The daemon resolves the path against the agent's current directory and asks the platform shell to reveal or open it.
  */
 export const revealPathRpc = defineRpc({
   // The host accepts lower-case, dotted RPC names only.
@@ -20,6 +16,7 @@ export const revealPathRpc = defineRpc({
   input: z.object({
     cwd: z.string(),
     path: z.string(),
+    open: z.boolean().optional(),
   }),
   output: z.object({
     revealed: z.string().nullable(),

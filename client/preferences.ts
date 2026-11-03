@@ -57,6 +57,8 @@ export interface EnhancerPreferences {
    * plugin cannot extend, so the toggle has no effect there.
    */
   selectionActions: boolean;
+  /** Ask before a path opens in its default app. Executables always ask. */
+  confirmOpenPath: boolean;
   /**
    * The plugin's own markdown rendering for assistant replies. Off hands the
    * turn back to Paseo's renderer, which is the safety valve: the plugin
@@ -95,6 +97,7 @@ export const DEFAULT_PREFERENCES: Readonly<EnhancerPreferences> = {
   pointerGlow: true,
   enhancedUserBubble: true,
   selectionActions: true,
+  confirmOpenPath: true,
   assistantMarkdown: true,
   markdownVariant: "document",
   collapseTools: [...COLLAPSIBLE_TOOL_GROUPS],
@@ -164,6 +167,10 @@ function loadPreferences(): EnhancerPreferences {
         typeof candidate.selectionActions === "boolean"
           ? candidate.selectionActions
           : DEFAULT_PREFERENCES.selectionActions,
+      confirmOpenPath:
+        typeof candidate.confirmOpenPath === "boolean"
+          ? candidate.confirmOpenPath
+          : DEFAULT_PREFERENCES.confirmOpenPath,
       assistantMarkdown:
         typeof candidate.assistantMarkdown === "boolean"
           ? candidate.assistantMarkdown

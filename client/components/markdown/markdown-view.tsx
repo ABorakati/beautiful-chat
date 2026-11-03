@@ -1,12 +1,13 @@
 import React, { useMemo } from "react";
-import { View, Text, ScrollView, StyleSheet } from "react-native";
-import type { TextStyle, ViewStyle } from "react-native";
+import { View, Text, ScrollView, StyleSheet, Platform } from "react-native";
+import type { TextProps, TextStyle, ViewStyle } from "react-native";
 import { Glyph } from "../glyph";
 import { radius, withAlpha, type ExtendedThemeTokens } from "../theme-tokens";
 import { selectableSurface, unselectable } from "../selection";
 import { selectionSurface } from "../selection-actions";
 import { SyntaxHighlightBlock } from "../syntax-highlight";
-import { openLink } from "../open-link";
+import { isAllowedLink, openLink } from "../open-link";
+import { pathTargetProps } from "../path-link-menu";
 import { parseMarkdown, type MdAlign, type MdBlock, type MdInline, type MdListItem } from "./parse";
 import { MarkdownImage } from "./markdown-image";
 
@@ -482,7 +483,7 @@ function renderInline(
         return span.text;
       case "codeSpan":
         return (
-          <Text key={key} selectable style={styles.codeSpan}>
+          <Text key={key} selectable style={styles.codeSpan} {...pathTargetProps(span.text)}>
             {span.text}
           </Text>
         );
@@ -513,24 +514,31 @@ function renderInline(
             {span.alt === "" ? span.src : span.alt}
           </Text>
         );
-      case "link":
-        // `onPress` on a Text, not a Pressable wrapper: a link sits mid
-        // sentence, and a View there would break the line box and drop the
-        // text out of the paragraph's selection range.
+      case "link": {
+        // A Text keeps the link inside the paragraph's selection range.
+        // Safe web anchors let Paseo offer Copy Link Address.
+        // Other targets carry a path mark, not an href that can navigate.
+        const web = Platform.OS === "web";
+        const allowed = isAllowedLink(span.href);
         return (
           <Text
             key={key}
             selectable
             accessibilityRole="link"
-            // No `href`: React Native Web would render a real anchor and the
-            // click would navigate the app window itself. The press handler
-            // routes through the host's opener instead.
-            onPress={() => openLink(span.href)}
+            {...(web && allowed ? ({ href: span.href } as object) : {})}
+            {...(web && !allowed
+              ? ({ dataSet: { bcpath: span.href } } as unknown as TextProps)
+              : {})}
+            onPress={(event) => {
+              if (web) event.preventDefault();
+              openLink(span.href);
+            }}
             style={styles.link}
           >
             {renderInline(span.spans, styles, key)}
           </Text>
         );
+      }
     }
   });
 }

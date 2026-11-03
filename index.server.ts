@@ -84,32 +84,52 @@ function readImageSize(bytes: Buffer, kind: string): { width: number; height: nu
   return null;
 }
 
+/** The time allowed for `open` or `xdg-open` to report an exit failure. */
+const LAUNCH_GRACE_MS = 3000;
+
 /**
- * Reveals a path with the platform shell. Windows Explorer selects the file
- * itself; macOS Finder does the same with `-R`; every other platform opens the
- * containing directory, because `xdg-open` on a file launches its editor.
+ * Starts a detached platform helper and reports start errors.
+ * Non-zero exits within the grace period also fail, except for Explorer.
+ * Explorer can exit non-zero after success and requires verbatim quotes.
  */
-function revealWithShell(target: string, isDirectory: boolean): void {
-  const child =
-    process.platform === "win32"
-      ? spawn("explorer.exe", [isDirectory ? `"${target}"` : `/select,"${target}"`], {
-          detached: true,
-          stdio: "ignore",
-          windowsVerbatimArguments: true,
-        })
-      : process.platform === "darwin"
-        ? spawn("open", isDirectory ? [target] : ["-R", target], {
-            detached: true,
-            stdio: "ignore",
-          })
-        : spawn("xdg-open", [isDirectory ? target : dirname(target)], {
-            detached: true,
-            stdio: "ignore",
-          });
-  // Explorer reports a non-zero exit even when it opened the window, so the
-  // result is never read. Detaching keeps the daemon free of a zombie child.
-  child.on("error", () => {});
-  child.unref();
+function launch(command: string, args: string[], explorer = false): Promise<void> {
+  // The ES2023 library does not include `Promise.withResolvers`.
+  return new Promise((done, fail) => {
+    const child = spawn(command, args, {
+      detached: true,
+      stdio: "ignore",
+      windowsVerbatimArguments: explorer,
+    });
+    child.once("error", fail);
+    child.once("spawn", () => {
+      child.unref();
+      if (explorer) return done();
+      const timer = setTimeout(done, LAUNCH_GRACE_MS);
+      child.once("exit", (code, signal) => {
+        clearTimeout(timer);
+        if (code === 0) done();
+        else fail(new Error(`${command} exited with ${code ?? signal}`));
+      });
+    });
+  });
+}
+/**
+ * Reveals a path with the platform shell.
+ * macOS always uses -R so an app bundle cannot launch through Reveal.
+ * Other Unix platforms open the parent directory of a file.
+ */
+function revealWithShell(target: string, isDirectory: boolean): Promise<void> {
+  if (process.platform === "win32") {
+    return launch("explorer.exe", [isDirectory ? `"${target}"` : `/select,"${target}"`], true);
+  }
+  if (process.platform === "darwin") return launch("open", ["-R", target]);
+  return launch("xdg-open", [isDirectory ? target : dirname(target)]);
+}
+
+/** Opens a path with its default app. */
+function openWithShell(target: string): Promise<void> {
+  if (process.platform === "win32") return launch("explorer.exe", [`"${target}"`], true);
+  return launch(process.platform === "darwin" ? "open" : "xdg-open", [target]);
 }
 
 const DARK_THEME = "github-dark-default";
@@ -441,10 +461,11 @@ export default function contribute(server: PluginServerContext) {
     const requested = stripSelector(input.path);
     if (!requested) return { revealed: null, error: "No path" };
 
+    // `resolve` converts forward slashes to backslashes on Windows for Explorer.
     const target = resolve(input.cwd, requested);
     try {
       const entry = await stat(target);
-      revealWithShell(target, entry.isDirectory());
+      await (input.open ? openWithShell(target) : revealWithShell(target, entry.isDirectory()));
       return { revealed: target, error: null };
     } catch (error) {
       return {

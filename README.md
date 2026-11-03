@@ -173,6 +173,7 @@ Devicon brand marks, and the file-manager link.
 | Timeline | Open while running | Open tool cards while their calls run, then apply the collapse rules. Disable this setting to apply those rules from the start. |
 | Timeline | Fold reasoning summaries | Fold summaries after completion. Disable this setting to keep every summary open. |
 | Interaction | Selection actions | Select text to show Copy and Add to chat on desktop and web. Add to chat inserts a quote or code block. |
+| Interaction | Ask before opening files | On by default. Ask before a safe file opens inside the working folder. Other files and paths always ask. |
 
 The live preview uses the real prompt, reasoning, tool, reply, and checklist components with sample data.
 It appears beside the settings at widths of 860 px or more, and above them on narrower screens.
@@ -204,17 +205,48 @@ match inside one of them.
 
 ## Opening files
 
-A file name in a read, write, edit, or code block is a link. Pressing it calls the plugin's own
-daemon-side RPC (`file.reveal`), which resolves the path against the agent's working directory and
-asks the platform shell to show it:
+A file name in a read, write, edit, or code block is a link. Press it to show the path in the file manager.
+The plugin's daemon RPC (`file.reveal`) resolves the path against the agent's current directory.
 
-| Platform | Behaviour                                              |
-| -------- | ------------------------------------------------------ |
-| Windows  | `explorer.exe /select,<file>` selects the file.        |
-| macOS    | `open -R <file>` selects the file in Finder.           |
-| Other    | `xdg-open <directory>` opens the containing directory. |
+| Platform | Show in File Manager                                  | Open in Default App          |
+| -------- | ----------------------------------------------------- | ---------------------------- |
+| Windows  | `explorer.exe /select,"<file>"` selects the file.      | `explorer.exe "<path>"`       |
+| macOS    | `open -R <path>` selects the path in Finder.           | `open <path>`                |
+| Other    | `xdg-open <directory>` opens the parent directory.     | `xdg-open <path>`            |
 
-A directory path opens that directory. A path the daemon cannot stat does nothing.
+A directory path opens that directory on Windows and Linux. The action runs on the daemon machine, not on the client machine.
+macOS always reveals the path with `open -R`, including an app bundle. **Show in File Manager** cannot launch that bundle.
+
+On desktop and web, right-click a path link or inline code that contains an absolute path.
+The menu offers **Copy Selection** when text is selected, **Copy Path**, **Open in Default App**, and **Show in File Manager**.
+A relative path offers only **Copy Path**, because the menu has no agent directory.
+A missing path or a launch error shows a message for five seconds.
+The macOS and Linux launchers report a non-zero exit within three seconds.
+Explorer can report a non-zero exit after success, so the plugin does not treat that exit as an error.
+
+**Open in Default App** first shows a confirmation dialog with the full target path.
+**Cancel** has focus. Press Escape or **Cancel** to close the dialog without an RPC.
+Select **Don't ask again**, then press **Open**, to skip later questions for ordinary files.
+Turn on **Ask before opening files** in the plugin settings to restore the question.
+This setting defaults to on. It applies to the client, not to direct daemon RPC calls.
+**Show in File Manager** needs no confirmation.
+
+Executables and scripts always show a warning and require confirmation, even when the setting is off.
+Their dialog has no **Don't ask again** checkbox. The extension list is case-insensitive:
+
+`exe`, `com`, `bat`, `cmd`, `ps1`, `psm1`, `vbs`, `vbe`, `js`, `jse`, `wsf`, `wsh`,
+`msi`, `msp`, `scr`, `pif`, `lnk`, `url`, `reg`, `hta`, `cpl`, `jar`, `sh`, `bash`,
+`zsh`, `command`, `app`, `appimage`, `run`, `desktop`, `py`, `pl`, `rb`.
+
+A path with no extension does not trigger this rule, including on macOS and Linux.
+The extension check does not inspect file contents or executable permission bits.
+Only open files that you trust.
+
+The dialog applies the daemon's selector rule (`shared/file-rpc.ts`), resolves `.` and `..` segments, and shows the result.
+The executable check and the Open RPC use that same target.
+
+Web links with `http`, `https`, or `mailto` use real anchors in replies.
+The host can offer link-address actions. A normal press still uses Paseo's external opener.
 
 ## Unmapped output
 

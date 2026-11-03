@@ -575,6 +575,14 @@ export function BeautifulChatSettingsPage({ theme }: PluginSurfaceProps) {
               onChange={(selectionActions) => updateEnhancerPreferences({ selectionActions })}
               tokens={tokens}
             />
+            <ToggleRow
+              title="Ask before opening files"
+              description="Ask before a safe file opens on the computer that runs the Paseo daemon. Other files and paths outside the working folder always ask."
+              chip="Desktop & web"
+              value={preferences.confirmOpenPath}
+              onChange={(confirmOpenPath) => updateEnhancerPreferences({ confirmOpenPath })}
+              tokens={tokens}
+            />
           </Section>
           <Pressable
             accessibilityRole="button"
