@@ -21,7 +21,10 @@ interface ReasoningTraceProps {
 }
 
 export function ReasoningTrace({ data, tokens, defaultExpanded = false }: ReasoningTraceProps) {
-  const [isExpanded, setIsExpanded] = useState(defaultExpanded);
+  // Read on every render, so a trace that opened only while it streamed folds
+  // once the thought completes. A press by the reader wins from then on.
+  const [chosen, setChosen] = useState<boolean | null>(null);
+  const isExpanded = chosen ?? defaultExpanded;
   const [activeStepId, setActiveStepId] = useState<string | null>(null);
 
   const durationFormatted = (data.durationMs / 1000).toFixed(1);
@@ -237,7 +240,7 @@ export function ReasoningTrace({ data, tokens, defaultExpanded = false }: Reason
       {...surfaceProps(frosted, glowing(tokens.isDark), selectionSurface)}
       style={styles.wrapper}
     >
-      <Pressable onPress={() => setIsExpanded((prev) => !prev)} style={styles.header}>
+      <Pressable onPress={() => setChosen(!isExpanded)} style={styles.header}>
         <View style={styles.headerLeft}>
           <View style={styles.iconBubble}>
             <Breathe active={isThinking}>

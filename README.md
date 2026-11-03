@@ -152,6 +152,10 @@ Devicon brand marks, and the file-manager link.
 | Frosted glass          | Blur card surfaces, or paint them solid.                           |
 | Enhanced prompt bubble | Off hands prompts back to Paseo, whose bubble shows pasted images. |
 | Assistant markdown     | Off hands replies back to Paseo's own markdown renderer.           |
+| Collapse when finished | Shell, write, edit, read, and other tool cards fold once done.     |
+| Collapse length        | Fold every finished card, or only those over 10, 20, or 50 lines.  |
+| Open while running     | Off keeps cards folded while their call is still running.          |
+| Fold reasoning         | Off keeps every reasoning summary open.                            |
 
 ---
 

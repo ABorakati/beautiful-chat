@@ -64,7 +64,11 @@ export function ToolCallout({
   onRevealPath,
   imageFile,
 }: ToolCalloutProps) {
-  const [expanded, setExpanded] = useState(defaultExpanded);
+  // The default is read on every render, so a card that opened only because
+  // it was running folds once the call finishes. A press by the reader wins
+  // from then on.
+  const [chosen, setChosen] = useState<boolean | null>(null);
+  const expanded = chosen ?? defaultExpanded;
 
   // Every branch below needs a payload. A tool that carries none — a hub op
   // with no parsed record, an unmapped kind — would otherwise draw an empty
@@ -454,7 +458,7 @@ export function ToolCallout({
       {...surfaceProps(frosted, glowing(tokens.isDark), selectionSurface)}
       style={styles.container}
     >
-      <Pressable onPress={() => setExpanded((p) => !p)} style={styles.header}>
+      <Pressable onPress={() => setChosen(!expanded)} style={styles.header}>
         <View style={styles.headerLeft}>
           <Breathe active={isRunning} depth={1.08} durationMs={1800}>
             <Glyph name={getToolIconName(data.tool)} size={13} color={iconColor} />

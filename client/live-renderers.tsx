@@ -7,6 +7,7 @@ import type { PluginTheme } from "@getpaseo/plugin";
 import { buildThemeTokens } from "./components/theme-tokens";
 import { buildUnifiedDiffText } from "./components/diff-text";
 import { ToolCallout } from "./components/tool-callouts";
+import { toolCardStartsExpanded } from "./tool-collapse";
 import { ReasoningTrace } from "./components/reasoning-trace";
 import { TaskList } from "./components/task-list";
 import { UserMessage } from "./components/user-message";
@@ -653,8 +654,7 @@ export function LiveToolCallRenderer({
     });
   }, [hubData, agentId]);
 
-  // Collapse completed tools by default; expand active or failed tools
-  const isExpanded = data.status === "running" || data.status === "failed";
+  const isExpanded = toolCardStartsExpanded(calloutData, preferences);
 
   // The daemon side owns the shell, so revealing a file is one RPC. A path the
   // daemon cannot stat answers with an error the press simply ignores.
@@ -756,7 +756,7 @@ export function LiveReasoningRenderer({
       <ReasoningTrace
         data={reasoningData}
         tokens={tokens}
-        defaultExpanded={data.phase === "streaming"}
+        defaultExpanded={data.phase === "streaming" || !preferences.collapseReasoning}
       />
     </View>
   );

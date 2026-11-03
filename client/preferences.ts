@@ -13,6 +13,14 @@ export type UiFontPreference = "inter" | "system";
 export type CodeFontPreference = "code" | "plain";
 export type MarkdownVariantPreference = "document" | "compact" | "terminal";
 
+/** The groups of tool card a reader can fold separately. */
+export const COLLAPSIBLE_TOOL_GROUPS = ["shell", "write", "edit", "read", "other"] as const;
+export type CollapsibleToolGroup = (typeof COLLAPSIBLE_TOOL_GROUPS)[number];
+
+/** Zero folds every finished card. Any other value spares a card that short. */
+export const COLLAPSE_LINE_LIMITS = [0, 10, 20, 50] as const;
+export type CollapseLineLimit = (typeof COLLAPSE_LINE_LIMITS)[number];
+
 export interface EnhancerPreferences {
   accent: AccentPreset;
   uiFont: UiFontPreference;
@@ -45,6 +53,17 @@ export interface EnhancerPreferences {
   assistantMarkdown: boolean;
   /** Which look the markdown renderer uses. */
   markdownVariant: MarkdownVariantPreference;
+  /** Tool card groups that fold shut once their call finishes. */
+  collapseTools: CollapsibleToolGroup[];
+  /** A finished card at or under this many lines stays open. Zero folds them all. */
+  collapseLineLimit: CollapseLineLimit;
+  /**
+   * A running card opens so its output can be watched as it streams, and
+   * folds when the call finishes. Off leaves running cards to the rules above.
+   */
+  expandWhileRunning: boolean;
+  /** A reasoning summary folds once the thought completes. Off keeps every summary open. */
+  collapseReasoning: boolean;
 }
 
 const STORAGE_KEY = "paseo/beautiful-chat/preferences/v1";
@@ -59,6 +78,10 @@ export const DEFAULT_PREFERENCES: Readonly<EnhancerPreferences> = {
   selectionActions: true,
   assistantMarkdown: true,
   markdownVariant: "document",
+  collapseTools: [...COLLAPSIBLE_TOOL_GROUPS],
+  collapseLineLimit: 0,
+  expandWhileRunning: true,
+  collapseReasoning: true,
 };
 
 const listeners = new Set<() => void>();
@@ -70,6 +93,15 @@ function storage(): Storage | undefined {
 
 function isAccentPreset(value: unknown): value is AccentPreset {
   return typeof value === "string" && value in ACCENT_PRESETS;
+}
+
+function isCollapseLineLimit(value: unknown): value is CollapseLineLimit {
+  return COLLAPSE_LINE_LIMITS.includes(value as CollapseLineLimit);
+}
+
+function collapseToolsFrom(value: unknown): CollapsibleToolGroup[] {
+  if (!Array.isArray(value)) return [...DEFAULT_PREFERENCES.collapseTools];
+  return COLLAPSIBLE_TOOL_GROUPS.filter((group) => value.includes(group));
 }
 
 function loadPreferences(): EnhancerPreferences {
@@ -105,6 +137,18 @@ function loadPreferences(): EnhancerPreferences {
         candidate.markdownVariant === "compact" || candidate.markdownVariant === "terminal"
           ? candidate.markdownVariant
           : DEFAULT_PREFERENCES.markdownVariant,
+      collapseTools: collapseToolsFrom(candidate.collapseTools),
+      collapseLineLimit: isCollapseLineLimit(candidate.collapseLineLimit)
+        ? candidate.collapseLineLimit
+        : DEFAULT_PREFERENCES.collapseLineLimit,
+      expandWhileRunning:
+        typeof candidate.expandWhileRunning === "boolean"
+          ? candidate.expandWhileRunning
+          : DEFAULT_PREFERENCES.expandWhileRunning,
+      collapseReasoning:
+        typeof candidate.collapseReasoning === "boolean"
+          ? candidate.collapseReasoning
+          : DEFAULT_PREFERENCES.collapseReasoning,
     };
   } catch {
     return { ...DEFAULT_PREFERENCES };

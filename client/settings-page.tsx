@@ -5,11 +5,14 @@ import { hostFontEscape } from "./components/host-font-escape";
 import { radius, buildThemeTokens, type ExtendedThemeTokens } from "./components/theme-tokens";
 import {
   ACCENT_PRESETS,
+  COLLAPSIBLE_TOOL_GROUPS,
   resetEnhancerPreferences,
   updateEnhancerPreferences,
   useEnhancerPreferences,
   type AccentPreset,
   type CodeFontPreference,
+  type CollapseLineLimit,
+  type CollapsibleToolGroup,
   type UiFontPreference,
 } from "./preferences";
 
@@ -23,6 +26,21 @@ const ACCENT_OPTIONS: ReadonlyArray<{
   { id: "violet", label: "Violet", color: ACCENT_PRESETS.violet },
   { id: "amber", label: "Amber", color: ACCENT_PRESETS.amber },
   { id: "rose", label: "Rose", color: ACCENT_PRESETS.rose },
+];
+
+const TOOL_GROUP_OPTIONS: ReadonlyArray<{ value: CollapsibleToolGroup; label: string }> = [
+  { value: "shell", label: "Shell and Git" },
+  { value: "write", label: "Writes" },
+  { value: "edit", label: "Edits" },
+  { value: "read", label: "Reads" },
+  { value: "other", label: "Other tools" },
+];
+
+const LINE_LIMIT_OPTIONS: ReadonlyArray<{ value: `${CollapseLineLimit}`; label: string }> = [
+  { value: "0", label: "Always" },
+  { value: "10", label: "Over 10 lines" },
+  { value: "20", label: "Over 20 lines" },
+  { value: "50", label: "Over 50 lines" },
 ];
 
 const TRACK_WIDTH = 38;
@@ -207,6 +225,62 @@ function ChoiceRow<T extends string>({
   );
 }
 
+/** Like `ChoiceRow`, but any number of options can be on at once. Sits first in its card. */
+function MultiChoiceRow<T extends string>({
+  title,
+  description,
+  values,
+  options,
+  onChange,
+  tokens,
+}: {
+  title: string;
+  description: string;
+  values: readonly T[];
+  options: ReadonlyArray<{ value: T; label: string }>;
+  onChange(values: T[]): void;
+  tokens: ExtendedThemeTokens;
+}) {
+  return (
+    // First in its card, so the card's own border stands in for the divider.
+    <View style={[styles.row, { borderTopWidth: 0 }]}>
+      <Text style={[styles.rowTitle, { color: tokens.foreground, fontFamily: tokens.fontUi }]}>
+        {title}
+      </Text>
+      <Text
+        style={[
+          styles.rowDescription,
+          { color: tokens.foregroundMuted, fontFamily: tokens.fontUi },
+        ]}
+      >
+        {description}
+      </Text>
+      <View style={styles.options}>
+        {options.map((option) => {
+          const selected = values.includes(option.value);
+          return (
+            <OptionButton
+              key={option.value}
+              label={option.label}
+              selected={selected}
+              onPress={() =>
+                onChange(
+                  options
+                    .map((candidate) => candidate.value)
+                    .filter((value) =>
+                      value === option.value ? !selected : values.includes(value),
+                    ),
+                )
+              }
+              tokens={tokens}
+            />
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
 /** Settings content mounted by Paseo under the selected host's Plugin settings. */
 export function BeautifulChatSettingsPage({ theme }: PluginSurfaceProps) {
   const preferences = useEnhancerPreferences();
@@ -367,6 +441,56 @@ export function BeautifulChatSettingsPage({ theme }: PluginSurfaceProps) {
         />
       </View>
 
+      <Text style={[styles.sectionTitle, { color: tokens.foreground, fontFamily: tokens.fontUi }]}>
+        Folding
+      </Text>
+      <View
+        style={[
+          styles.card,
+          { borderColor: tokens.borderSubtle, backgroundColor: tokens.surfaceGlass },
+        ]}
+      >
+        <MultiChoiceRow<CollapsibleToolGroup>
+          title="Collapse when finished"
+          description="Cards of the chosen kinds fold to their header once the call finishes. A failed call stays open so the error is in view, and so does a question from the agent. Pressing a header opens or closes that card either way."
+          values={preferences.collapseTools}
+          options={TOOL_GROUP_OPTIONS}
+          onChange={(values) =>
+            updateEnhancerPreferences({
+              collapseTools: COLLAPSIBLE_TOOL_GROUPS.filter((group) => values.includes(group)),
+            })
+          }
+          tokens={tokens}
+        />
+
+        <ChoiceRow<`${CollapseLineLimit}`>
+          title="Collapse length"
+          description="Fold every finished card, or only those longer than a few lines so a short edit or a one-line result stays readable."
+          value={`${preferences.collapseLineLimit}`}
+          options={LINE_LIMIT_OPTIONS}
+          onChange={(value) =>
+            updateEnhancerPreferences({ collapseLineLimit: Number(value) as CollapseLineLimit })
+          }
+          tokens={tokens}
+        />
+
+        <ToggleRow
+          title="Open while running"
+          description="A running call shows its output as it streams, then folds when it finishes. Turn this off to keep cards folded from the start."
+          value={preferences.expandWhileRunning}
+          onChange={(expandWhileRunning) => updateEnhancerPreferences({ expandWhileRunning })}
+          tokens={tokens}
+        />
+
+        <ToggleRow
+          title="Fold reasoning summaries"
+          description="A reasoning summary folds to its header once the thought completes. Turn this off to keep every summary open."
+          value={preferences.collapseReasoning}
+          onChange={(collapseReasoning) => updateEnhancerPreferences({ collapseReasoning })}
+          tokens={tokens}
+        />
+      </View>
+
       <Pressable
         accessibilityRole="button"
         onPress={resetEnhancerPreferences}
@@ -403,6 +527,7 @@ const styles = StyleSheet.create({
   knob: { width: KNOB, height: KNOB, borderRadius: KNOB / 2 },
   intro: { padding: 14, borderWidth: 1, borderRadius: radius.card, gap: 4 },
   title: { fontSize: 16, fontWeight: "700" },
+  sectionTitle: { fontSize: 14, fontWeight: "700", marginTop: 4, paddingHorizontal: 2 },
   description: { fontSize: 13, lineHeight: 18 },
   card: { borderWidth: 1, borderRadius: radius.card, overflow: "hidden" },
   row: { padding: 14, gap: 8, borderTopWidth: 1 },
