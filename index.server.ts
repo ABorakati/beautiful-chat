@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 import { open, stat, type FileHandle } from "node:fs/promises";
 import { dirname, isAbsolute, resolve } from "node:path";
 import type { PluginServerContext } from "@getpaseo/plugin/server";
-import { revealPathRpc } from "./shared/file-rpc";
+import { revealPathRpc, stripSelector } from "./shared/file-rpc";
 import { type HighlightLine, type HighlightToken, highlightRpc } from "./shared/highlight-rpc";
 import { imageRpc } from "./shared/image-rpc";
 
@@ -84,16 +84,6 @@ function readImageSize(bytes: Buffer, kind: string): { width: number; height: nu
   return null;
 }
 
-/** Strips the selector a tool appends to a path, such as `main.ts:55-85`. */
-function stripSelector(path: string): string {
-  const trimmed = path.trim();
-  const windowsDrive = /^[a-zA-Z]:[\\/]/.test(trimmed);
-  const head = windowsDrive ? trimmed.slice(0, 3) : "";
-  const tail = windowsDrive ? trimmed.slice(3) : trimmed;
-  const cut = tail.search(/[\s:?#]/);
-  return cut === -1 ? trimmed : head + tail.slice(0, cut);
-}
-
 /**
  * Reveals a path with the platform shell. Windows Explorer selects the file
  * itself; macOS Finder does the same with `-R`; every other platform opens the
@@ -102,7 +92,7 @@ function stripSelector(path: string): string {
 function revealWithShell(target: string, isDirectory: boolean): void {
   const child =
     process.platform === "win32"
-      ? spawn("explorer.exe", isDirectory ? [target] : [`/select,${target}`], {
+      ? spawn("explorer.exe", [isDirectory ? `"${target}"` : `/select,"${target}"`], {
           detached: true,
           stdio: "ignore",
           windowsVerbatimArguments: true,
@@ -451,7 +441,7 @@ export default function contribute(server: PluginServerContext) {
     const requested = stripSelector(input.path);
     if (!requested) return { revealed: null, error: "No path" };
 
-    const target = isAbsolute(requested) ? requested : resolve(input.cwd, requested);
+    const target = resolve(input.cwd, requested);
     try {
       const entry = await stat(target);
       revealWithShell(target, entry.isDirectory());

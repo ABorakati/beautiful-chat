@@ -1,6 +1,11 @@
 import { defineRpc } from "@getpaseo/plugin";
 import { z } from "zod";
 
+/** Removes a trailing line or column selector. Keeps spaces and punctuation in names. */
+export function stripSelector(path: string): string {
+  return path.trim().replace(/(?::\d+(?::\d+)?(?:-\d+(?::\d+)?)?|#L\d+(?:-L?\d+)?)$/, "");
+}
+
 /**
  * Shows a path in the machine's own file manager.
  *

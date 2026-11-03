@@ -35,6 +35,10 @@ nothing says so rather than showing an empty panel.
 The file's own language logo, a wrapped path, line numbers, and a copy button. The path is a link:
 pressing it shows the file in the machine's file manager.
 
+Image and reveal paths keep spaces and punctuation in file names. Only a trailing selector, such
+as `:55-85`, `:12:3`, or `#L10-L20`, is removed. On Windows, reveal paths use backslashes and
+quotes so Explorer accepts spaces and commas.
+
 ![Read tool call](docs/images/tool-read.png)
 
 ### Images
