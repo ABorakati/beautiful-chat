@@ -581,6 +581,13 @@ export function BeautifulChatSettingsPage({ theme }: PluginSurfaceProps) {
               onChange={(collapseReasoning) => updateEnhancerPreferences({ collapseReasoning })}
               tokens={tokens}
             />
+            <ToggleRow
+              title="Live checklist"
+              description="Show only checklist updates that the feed identifies as current. Keep cards visible while the feed is unavailable. Disable this setting to show every update."
+              value={preferences.liveChecklist}
+              onChange={(liveChecklist) => updateEnhancerPreferences({ liveChecklist })}
+              tokens={tokens}
+            />
           </Section>
 
           <Section title="Interaction" tokens={tokens}>

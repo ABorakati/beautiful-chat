@@ -125,6 +125,19 @@ A collapsible trace with a connected step rail, per-step duration, and a token t
 
 Phase name, per-task status, durations, and a blocked task with its reason.
 
+Live checklist is on by default. The plugin hides a checklist only when its agent feed identifies a newer update.
+Cards stay visible while the feed is not ready, scans history, finds no matching list, or reports an error.
+The plugin retries failed feeds after 500 ms and doubles the delay to a 10-second maximum.
+The 0.15 SDK exposes no row ID or sequence number to todo renderers. Host timestamps do not identify todo updates.
+The plugin compares task content instead. Unknown content stays visible.
+The transformer removes older content when no observed agent needs it as its newest checklist.
+This removes the empty host wrapper for those older updates. Refreshes occur at most once per frame (16 ms).
+If another agent still needs the same content, the renderer hides only its agent's older card. A host wrapper can remain.
+An unanswered feed prevents transformer suppression. A complete empty history does not block other agents.
+Identical updates of the newest list stay visible because the SDK cannot distinguish them.
+The plugin removes cached feed data after the last row for that agent unmounts.
+Turn the setting off to show each update.
+
 ![Checklist](docs/images/tasks.png)
 
 ### Approval card
@@ -174,6 +187,7 @@ Devicon brand marks, and the file-manager link.
 | Timeline | Fold reasoning summaries | Fold summaries after completion. Disable this setting to keep every summary open. |
 | Timeline | Let Paseo fold tool calls | Off by default. On desktop and web, let Paseo draw calls when its display setting folds them. |
 | Timeline | Show reasoning between folded calls | On by default. Keep reasoning visible while Paseo folds tool calls. |
+| Timeline | Live checklist | On by default. Hide older updates when the agent feed identifies a newer checklist. Keep cards visible while the feed is unavailable. Disable this setting to show every update. |
 | Interaction | Selection actions | Select text to show Copy and Add to chat on desktop and web. Add to chat inserts a quote or code block. |
 | Interaction | Ask before opening files | On by default. Ask before a safe file opens inside the working folder. Other files and paths always ask. |
 

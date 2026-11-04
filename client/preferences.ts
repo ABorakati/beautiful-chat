@@ -83,6 +83,8 @@ export interface EnhancerPreferences {
   expandWhileRunning: boolean;
   /** A reasoning summary folds once the thought completes. Off keeps every summary open. */
   collapseReasoning: boolean;
+  /** Show only the newest checklist where it arrived. Off shows every update. */
+  liveChecklist: boolean;
   /** A reply's code block longer than this folds to a preview. Zero never folds. */
   codeFoldLimit: CodeFoldLimit;
   /** A prompt that runs past this many lines folds to a preview. Zero never folds. */
@@ -110,6 +112,7 @@ export const DEFAULT_PREFERENCES: Readonly<EnhancerPreferences> = {
   collapseLineLimit: 0,
   expandWhileRunning: true,
   collapseReasoning: true,
+  liveChecklist: true,
   codeFoldLimit: 30,
   promptFoldLimit: 15,
 };
@@ -205,6 +208,10 @@ function loadPreferences(): EnhancerPreferences {
         typeof candidate.collapseReasoning === "boolean"
           ? candidate.collapseReasoning
           : DEFAULT_PREFERENCES.collapseReasoning,
+      liveChecklist:
+        typeof candidate.liveChecklist === "boolean"
+          ? candidate.liveChecklist
+          : DEFAULT_PREFERENCES.liveChecklist,
       codeFoldLimit: isCodeFoldLimit(candidate.codeFoldLimit)
         ? candidate.codeFoldLimit
         : DEFAULT_PREFERENCES.codeFoldLimit,
@@ -249,7 +256,9 @@ export function resetEnhancerPreferences(): void {
 
 export function subscribeEnhancerPreferences(listener: () => void): () => void {
   listeners.add(listener);
-  return () => listeners.delete(listener);
+  return () => {
+    listeners.delete(listener);
+  };
 }
 
 export function useEnhancerPreferences(): EnhancerPreferences {
