@@ -794,6 +794,7 @@ export function ToolCallout({
                 code={data.code || "// [Empty content or pending stream]"}
                 language={data.language ?? "text"}
                 filename={data.filePath ? `${data.filePath} ${data.lineRange || ""}` : undefined}
+                filePath={data.filePath}
                 tokens={tokens}
                 showLineNumbers={Boolean(data.code)}
                 onRevealFile={revealFile}

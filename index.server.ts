@@ -1,10 +1,11 @@
-import { spawn } from "node:child_process";
 import { open, stat, type FileHandle } from "node:fs/promises";
-import { dirname, isAbsolute, resolve } from "node:path";
+import { isAbsolute, resolve } from "node:path";
 import type { PluginServerContext } from "@getpaseo/plugin/server";
 import { revealPathRpc, stripSelector } from "./shared/file-rpc";
 import { type HighlightLine, type HighlightToken, highlightRpc } from "./shared/highlight-rpc";
 import { imageRpc } from "./shared/image-rpc";
+import { openWithShell, revealWithShell } from "./server/path-launcher";
+import { enforceOpenPolicy, inspectOpenTarget, resolveOpenPath } from "./server/path-open-policy";
 
 /**
  * Image types worth inlining, and the mime each one needs in its data URI.
@@ -84,33 +85,6 @@ function readImageSize(bytes: Buffer, kind: string): { width: number; height: nu
   return null;
 }
 
-/**
- * Reveals a path with the platform shell. Windows Explorer selects the file
- * itself; macOS Finder does the same with `-R`; every other platform opens the
- * containing directory, because `xdg-open` on a file launches its editor.
- */
-function revealWithShell(target: string, isDirectory: boolean): void {
-  const child =
-    process.platform === "win32"
-      ? spawn("explorer.exe", [isDirectory ? `"${target}"` : `/select,"${target}"`], {
-          detached: true,
-          stdio: "ignore",
-          windowsVerbatimArguments: true,
-        })
-      : process.platform === "darwin"
-        ? spawn("open", isDirectory ? [target] : ["-R", target], {
-            detached: true,
-            stdio: "ignore",
-          })
-        : spawn("xdg-open", [isDirectory ? target : dirname(target)], {
-            detached: true,
-            stdio: "ignore",
-          });
-  // Explorer reports a non-zero exit even when it opened the window, so the
-  // result is never read. Detaching keeps the daemon free of a zombie child.
-  child.on("error", () => {});
-  child.unref();
-}
 
 const DARK_THEME = "github-dark-default";
 const LIGHT_THEME = "github-light-default";
@@ -437,18 +411,35 @@ function tokenize(
 }
 
 export default function contribute(server: PluginServerContext) {
-  server.handle(revealPathRpc, async (input) => {
-    const requested = stripSelector(input.path);
-    if (!requested) return { revealed: null, error: "No path" };
+  server.handle(revealPathRpc, async (input, { paseo }) => {
+    const empty = { revealed: null, launch: null, policy: null };
+    const requested = input.open ? input.path : stripSelector(input.path);
+    if (!requested) return { ...empty, error: "No path" };
 
-    const target = resolve(input.cwd, requested);
     try {
-      const entry = await stat(target);
-      revealWithShell(target, entry.isDirectory());
-      return { revealed: target, error: null };
+      let agentCwd: string | null = null;
+      if (input.agentId) {
+        // A failed lookup leaves the folder unknown and requires confirmation.
+        const snapshot = await paseo.agents.ref(input.agentId).refresh().catch(() => null);
+        agentCwd = snapshot?.agent.cwd ?? null;
+      }
+      const target = resolveOpenPath(requested, agentCwd || input.cwd || null);
+      if (input.open || input.check) {
+        const policy = await inspectOpenTarget(target, agentCwd);
+        if (input.check) return { ...empty, policy, error: null };
+        if (input.confirmed && resolve(policy.path) !== target) {
+          throw new Error("The target changed. Confirm the open again.");
+        }
+        enforceOpenPolicy(policy, input.confirmed);
+        const launch = await openWithShell(policy.path);
+        return { revealed: policy.path, launch, policy, error: null };
+      }
+      await stat(target);
+      const launch = await revealWithShell(target);
+      return { ...empty, revealed: target, launch, error: null };
     } catch (error) {
       return {
-        revealed: null,
+        ...empty,
         error: error instanceof Error ? error.message : String(error),
       };
     }
