@@ -58,6 +58,13 @@ any tool that returned a picture: a Claude Read of an image or a browser screens
 same `file.image` RPC; an `http(s)` or `data:` source loads in the image view directly, and the
 header shows the alt text, or the file name when the alt is just "Image".
 
+An image a skill saves is drawn too when the reply names it on a line of its own: a bare path such
+as `/tmp/out/image.png` or `~/Pictures/out.jpg`, a `file://` URL, or a link like
+`[image.png](/abs/image.png)`. A markdown image inside a list item or a quote draws as well; in a
+heading or a table cell only its alt text shows. A path inside a sentence stays a link. A link to
+a `file://` URL or a local path shows the file in the file manager when pressed; it never opens
+the file, which only the path menu's confirmed Open does.
+
 ### Edit
 
 Diff rendering where adjacent removed and added rows join into one rounded block, and only the

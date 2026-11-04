@@ -6,7 +6,12 @@ import { type HighlightLine, type HighlightToken, highlightRpc } from "./shared/
 import { imageRpc } from "./shared/image-rpc";
 import { presentationSettings } from "./shared/settings";
 import { openWithShell, revealWithShell } from "./server/path-launcher";
-import { enforceOpenPolicy, inspectOpenTarget, resolveOpenPath } from "./server/path-open-policy";
+import {
+  enforceOpenPolicy,
+  expandHome,
+  inspectOpenTarget,
+  resolveOpenPath,
+} from "./server/path-open-policy";
 
 /**
  * Image types worth inlining, and the mime each one needs in its data URI.
@@ -457,7 +462,8 @@ export default function contribute(server: PluginServerContext) {
     const mime = IMAGE_MIMES[kind];
     if (!mime) return { ...empty, error: `Not an image: .${kind}` };
 
-    const target = isAbsolute(requested) ? requested : resolve(input.cwd, requested);
+    const expanded = expandHome(requested);
+    const target = isAbsolute(expanded) ? expanded : resolve(input.cwd, expanded);
     let handle: FileHandle | null = null;
     try {
       const entry = await stat(target);

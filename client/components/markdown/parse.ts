@@ -73,6 +73,13 @@ const TRAILING_SPACE_RE = /[ \t]+$/;
 const ESCAPABLE_RE = /[!-\/:-@\[-`{-~]/;
 // Sticky, so a candidate is tested in place instead of slicing the line.
 const URL_RE = /(?:https?:\/\/|www\.)[^\s<>()[\]]+/y;
+// A bare `file://` URL, which an image tool often prints in place of markdown.
+// It becomes a link the renderer shows in the file manager, never one it opens.
+const FILE_URL_RE = /file:\/\/[^\s<>()[\]]+/iy;
+// The types the chat can draw: the list `IMAGE_EXTENSIONS` in
+// `client/image-file.ts` and the daemon's `IMAGE_MIMES` hold. This module stays
+// pure, so it keeps its own copy.
+const IMAGE_FILE_RE = /\.(?:png|jpe?g|gif|webp|avif|bmp|ico|svg)$/i;
 
 // A path candidate: a Windows drive, a home prefix, a rooted slash, or a
 // relative run of segments, followed by a body that excludes the characters
@@ -647,6 +654,22 @@ function parseInline(src: string, depth = 0, marks = true): MdInline[] {
     }
 
     if (
+      (ch === "f" || ch === "F") &&
+      (!isWordChar(src[index - 1] ?? "") || WIDE_BREAK_RE.test(src[index - 1] ?? ""))
+    ) {
+      FILE_URL_RE.lastIndex = index;
+      const match = FILE_URL_RE.exec(src);
+      // Trailing sentence punctuation belongs to the prose, as for a web URL.
+      const url = match === null ? "" : (match[0] ?? "").replace(/[.,;:!?'"，。；：！？）】』」]+$/, "");
+      if (url.length > "file://".length) {
+        flush();
+        out.push({ kind: "link", href: url, spans: [{ kind: "text", text: url }] });
+        index += url.length;
+        continue;
+      }
+    }
+
+    if (
       (ch === "h" || ch === "w") &&
       (!isWordChar(src[index - 1] ?? "") || WIDE_BREAK_RE.test(src[index - 1] ?? ""))
     ) {
@@ -741,11 +764,16 @@ function matchBracket(src: string, start: number, open: string, close: string): 
 }
 
 function cleanHref(raw: string): string {
-  let href = raw.trim();
-  // A link title follows the target after whitespace: `(url "title")`.
-  const space = href.search(/\s/);
-  if (space > -1) href = href.slice(0, space);
-  if (href.startsWith("<") && href.endsWith(">")) href = href.slice(1, -1);
+  const href = raw.trim();
+  // `(<path with spaces.png>)` is markdown's own way to keep a space, so the
+  // brackets come off before the title rule below can split on it.
+  const angled = /^<([^<>\n]*)>(?:\s|$)/.exec(href);
+  if (angled !== null) return angled[1] ?? "";
+  // A link title follows the target after whitespace: `(url "title")`. Any
+  // other space is part of the target: a model writes a local path with spaces
+  // as it stands, and cutting it at the first space finds no file.
+  const titled = /^(.+?)\s+(?:"[^"]*"|'[^']*'|\([^)]*\))$/.exec(href);
+  if (titled !== null) return titled[1] ?? "";
   return href;
 }
 
@@ -781,6 +809,90 @@ export function isFilePathToken(raw: string): string | null {
   const bare = token.replace(/:\d+(?::\d+)?$/, "");
   if (!windows && !rooted && !/\.[A-Za-z0-9]{1,8}$/.test(bare)) return null;
   return token;
+}
+
+/**
+ * The local path a link target names, or null for anything else.
+ *
+ * A `file://` URL is decoded to its path, as the daemon writes one: each
+ * segment percent-encoded, `localhost` or no host, and a Windows drive after
+ * the third slash. A target with no scheme counts when it is rooted (a drive,
+ * a home prefix or a slash) or ends in a file extension. Every other scheme,
+ * `javascript:` and `sandbox:` included, is null: such a target is not a file
+ * the daemon can find.
+ */
+export function localPathFromHref(href: string): string | null {
+  const target = href.trim();
+  if (target === "") return null;
+  if (/[\u0000-\u001f<>]/.test(target)) return null;
+
+  if (/^file:\/\//i.test(target)) {
+    const rest = target.slice("file://".length).replace(/[?#].*$/, "");
+    const slash = rest.indexOf("/");
+    const host = slash === -1 ? rest : rest.slice(0, slash);
+    let path = slash === -1 ? "" : rest.slice(slash);
+    try {
+      path = decodeURIComponent(path);
+    } catch {
+      // A stray `%` that is not an escape: keep the raw path, and let the
+      // daemon report that it cannot find it.
+    }
+    if (path === "" || path === "/") return null;
+    if (host !== "" && host.toLowerCase() !== "localhost") return `//${host}${path}`;
+    // `file:///C:/x` carries a leading slash that is not part of the path.
+    return /^\/[A-Za-z]:[\\/]/.test(path) ? path.slice(1) : path;
+  }
+
+  const windows = /^[A-Za-z]:[\\/]/.test(target);
+  if (!windows && /^[A-Za-z][A-Za-z0-9+.-]*:/.test(target)) return null;
+  if (target.startsWith("#") || target.startsWith("?")) return null;
+  const rooted = windows || /^(?:\/|~[\\/])/.test(target);
+  const bare = target.replace(/:\d+(?::\d+)?$/, "");
+  if (!rooted && !/\.[A-Za-z0-9]{1,8}$/.test(bare)) return null;
+  return target;
+}
+
+/**
+ * The picture a run names on its own, or null when it names none. An image is
+ * its own source; a local path or a link to a local file counts when the file
+ * is a type the chat can draw. Web links stay links: a page is not a picture,
+ * even when its address ends in `.png`.
+ */
+export function localImageSource(span: MdInline): { src: string; alt: string } | null {
+  if (span.kind === "image") return { src: span.src, alt: span.alt };
+  if (span.kind === "filePath") {
+    const bare = span.path.replace(/:\d+(?::\d+)?$/, "");
+    return IMAGE_FILE_RE.test(bare) ? { src: span.path, alt: "" } : null;
+  }
+  if (span.kind === "link") {
+    const path = localPathFromHref(span.href);
+    if (path === null || !IMAGE_FILE_RE.test(path)) return null;
+    // A label that only repeats the target says nothing; the card then names
+    // the file instead.
+    const label = inlineToText(span.spans).trim();
+    return { src: span.href, alt: label === span.href || label === path ? "" : label };
+  }
+  return null;
+}
+
+/**
+ * A paragraph that holds nothing but pictures, as the images to draw, or null
+ * when it holds prose too.
+ *
+ * An image tool does not always write `![...](...)`: it may print the saved
+ * path, a `file://` URL or a link to the file on a line of its own. Such a
+ * paragraph is the picture, so it draws as one. A path inside a sentence stays
+ * a path, so prose that mentions a `.png` does not grow a thumbnail.
+ */
+export function soleImageSources(spans: MdInline[]): { src: string; alt: string }[] | null {
+  const images: { src: string; alt: string }[] = [];
+  for (const span of spans) {
+    if (span.kind === "text" && span.text.trim() === "") continue;
+    const image = localImageSource(span);
+    if (image === null) return null;
+    images.push(image);
+  }
+  return images.length === 0 ? null : images;
 }
 
 /** The text a reader sees, for measuring and for copy targets. */

@@ -5,6 +5,7 @@ import { revealPathRpc } from "../../../shared/file-rpc";
 import { type ImageFile, isImagePath, useImageFile } from "../../image-file";
 import { ImagePreview } from "../image-preview";
 import type { ExtendedThemeTokens } from "../theme-tokens";
+import { localPathFromHref } from "./parse";
 
 interface MarkdownImageProps {
   src: string;
@@ -23,7 +24,6 @@ type ImageSource =
   | { kind: "none" };
 
 const FILE_SCHEME = /^file:\/\//i;
-const WINDOWS_DRIVE = /^\/[A-Za-z]:[\\/]/;
 
 /**
  * Sorts a markdown image target into something drawable.
@@ -43,16 +43,10 @@ export function resolveImageSource(src: string): ImageSource {
   }
 
   if (FILE_SCHEME.test(trimmed)) {
-    let path = trimmed.replace(FILE_SCHEME, "");
-    try {
-      path = decodeURIComponent(path);
-    } catch {
-      // A stray `%` that is not an escape: keep the raw path and let the
-      // daemon report that it cannot find it.
-    }
-    // `file:///C:/x` carries a leading slash that is not part of the path.
-    if (WINDOWS_DRIVE.test(path)) path = path.slice(1);
-    return path === "" ? { kind: "none" } : { kind: "file", path };
+    // Decoding, a `localhost` host and a `file:///C:/x` drive are the
+    // parser's, which reads the same URL when it is a link.
+    const path = localPathFromHref(trimmed);
+    return path === null ? { kind: "none" } : { kind: "file", path };
   }
 
   if (isImagePath(trimmed)) return { kind: "file", path: trimmed };

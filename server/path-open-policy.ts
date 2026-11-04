@@ -1,5 +1,6 @@
 import { execFile } from "node:child_process";
 import { realpath, stat } from "node:fs/promises";
+import { homedir } from "node:os";
 import { isAbsolute, relative, resolve, sep } from "node:path";
 import { promisify } from "node:util";
 import { isSafeOpenPath, requiresOpenConfirmation } from "../shared/path-open-policy";
@@ -33,8 +34,18 @@ export async function inspectOpenTarget(path: string, cwd: string | null): Promi
   return { path: target, risky, outsideWorkingFolder };
 }
 
+/**
+ * Expand a leading `~` to the daemon user's home, as a shell would. A reply
+ * writes `~/Pictures/out.png` as often as the full path, and without this it
+ * would resolve against the agent folder as a directory named `~`.
+ */
+export function expandHome(path: string): string {
+  return /^~(?:[\\/]|$)/.test(path) ? homedir() + path.slice(1) : path;
+}
+
 /** Resolve a relative path only when the caller supplied an absolute folder. */
-export function resolveOpenPath(path: string, cwd: string | null): string {
+export function resolveOpenPath(requested: string, cwd: string | null): string {
+  const path = expandHome(requested);
   if (!isAbsolute(path) && (!cwd || !isAbsolute(cwd))) {
     throw new Error("The working folder is unknown. Use an absolute path.");
   }
