@@ -37,6 +37,10 @@ function toJsonValue(value: unknown): JsonValue {
   return value as JsonValue;
 }
 
+// The opening fence of a genui block: the same rule genui uses (up to three
+// spaces of indent, backticks or tildes, info string `ui` or `app`).
+const GENUI_FENCE = /^ {0,3}(?:`{3,}|~{3,})\s*(?:ui|app)(?![A-Za-z0-9_-])/m;
+
 export default function contribute(client: PluginClientContext) {
   // Preferences live on the host, so iOS and Android keep them too.
   void initializeEnhancerPreferences((contract, input) => client.rpc(contract, input));
@@ -272,6 +276,9 @@ export default function contribute(client: PluginClientContext) {
         return undefined;
       }
       if (!item.text.trim()) return undefined;
+      // A reply with a ```ui or ```app fence belongs to the genui plugin, which
+      // draws those blocks as live UI. Taking it here would show them as code.
+      if (GENUI_FENCE.test(item.text)) return undefined;
       return {
         items: [
           {
