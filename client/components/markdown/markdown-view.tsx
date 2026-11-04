@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import { View, Text, ScrollView, StyleSheet, Platform } from "react-native";
-import type { TextProps, TextStyle, ViewStyle } from "react-native";
+import type { StyleProp, TextProps, TextStyle, ViewStyle } from "react-native";
 import { Glyph } from "../glyph";
 import { radius, withAlpha, type ExtendedThemeTokens } from "../theme-tokens";
 import { selectableSurface, unselectable } from "../selection";
@@ -11,6 +11,8 @@ import { pathTargetProps } from "../path-link-menu";
 import {
   parseMarkdown,
   isFilePathToken,
+  localPathFromHref,
+  soleImageSources,
   type MdAlign, type MdBlock, type MdInline,
   type MdListItem,
 } from "./parse";
@@ -228,6 +230,8 @@ interface MarkdownStyles {
   checkboxCell: ViewStyle;
   itemText: TextStyle;
   itemTextDone: TextStyle;
+  itemBody: ViewStyle;
+  itemRunDone: TextStyle;
   quote: ViewStyle;
   quoteText: TextStyle;
   codeBlock: ViewStyle;
@@ -328,7 +332,8 @@ function renderBlock(
     case "quote":
       return (
         <View key={key} style={styles.quote}>
-      {block.paragraphs.map((spans, index) => (
+      {block.paragraphs.map((spans, index) =>
+        splitImageRuns(spans, `${key}q${index}`, context, styles.quoteText) ?? (
         <Text key={`${key}q${index}`} selectable style={styles.quoteText}>
           {renderInline(spans, styles, `${key}q${index}`, context.onRevealFile)}
         </Text>
@@ -374,14 +379,41 @@ function renderBlock(
  * reply that is nothing but `![Image](file:///...)`.
  */
 function renderParagraph(spans: MdInline[], key: string, context: RenderContext): React.ReactNode {
-  const { styles, tokens, cwd } = context;
-  if (!spans.some((span) => span.kind === "image")) {
+  const { styles } = context;
+  // A paragraph that is only a saved image's path, `file://` URL or link is
+  // the picture an image tool made, so it draws like `![...](...)` would.
+  const sole = soleImageSources(spans);
+  const runs: MdInline[] =
+    sole === null ? spans : sole.map((image) => ({ kind: "image", ...image }));
+  const parts = splitImageRuns(runs, key, context, styles.paragraph);
+  if (parts === null) {
     return (
       <Text key={key} selectable style={styles.paragraph}>
         {renderInline(spans, styles, key, context.onRevealFile)}
       </Text>
     );
   }
+
+  return (
+    <View key={key} style={styles.imageParagraph}>
+      {parts}
+    </View>
+  );
+}
+
+/**
+ * The runs around each image as their own Text, with the image as a block
+ * between them. Null when the runs hold no image, so the caller keeps its one
+ * Text. Paragraphs, list items and quotes draw pictures this way.
+ */
+function splitImageRuns(
+  spans: MdInline[],
+  key: string,
+  context: RenderContext,
+  textStyle: StyleProp<TextStyle>,
+): React.ReactNode[] | null {
+  const { styles, tokens, cwd } = context;
+  if (!spans.some((span) => span.kind === "image")) return null;
 
   const parts: React.ReactNode[] = [];
   let run: MdInline[] = [];
@@ -391,7 +423,7 @@ function renderParagraph(spans: MdInline[], key: string, context: RenderContext)
     if (prose) {
       const runKey = `${key}p${parts.length}`;
       parts.push(
-        <Text key={runKey} selectable style={styles.paragraph}>
+        <Text key={runKey} selectable style={textStyle}>
           {renderInline(run, styles, runKey, context.onRevealFile)}
         </Text>,
       );
@@ -416,12 +448,7 @@ function renderParagraph(spans: MdInline[], key: string, context: RenderContext)
     );
   }
   flushRun();
-
-  return (
-    <View key={key} style={styles.imageParagraph}>
-      {parts}
-    </View>
-  );
+  return parts;
 }
 
 function renderItem(
@@ -434,12 +461,22 @@ function renderItem(
   const depth = item.depth > 3 ? 3 : item.depth;
   const indentStyle = styles[INDENT_KEYS[depth] ?? "indent0"];
   // The body is the flexible column, so a wrapped second line starts under the
-  // item's first character instead of under its marker.
-  const body = (
-    <Text selectable style={item.checked === true ? styles.itemTextDone : styles.itemText}>
-      {renderInline(item.spans, styles, key, context.onRevealFile)}
-    </Text>
+  // item's first character instead of under its marker. An item that holds an
+  // image stacks its runs and pictures in that column instead.
+  const runs = splitImageRuns(
+    item.spans,
+    key,
+    context,
+    item.checked === true ? [styles.paragraph, styles.itemRunDone] : styles.paragraph,
   );
+  const body =
+    runs === null ? (
+      <Text selectable style={item.checked === true ? styles.itemTextDone : styles.itemText}>
+        {renderInline(item.spans, styles, key, context.onRevealFile)}
+      </Text>
+    ) : (
+      <View style={styles.itemBody}>{runs}</View>
+    );
 
   if (item.checked !== undefined) {
     return (
@@ -625,9 +662,9 @@ function renderInline(
           </Text>
         );
       case "image":
-        // Inside a heading, list item, quote or cell there is no block to put
-        // a picture in, so the alt text stands in for it, as plain markdown
-        // would read. Paragraphs, where images actually arrive, draw them.
+        // Inside a heading or a table cell there is no block to put a picture
+        // in, so the alt text stands in for it, as plain markdown would read.
+        // Paragraphs, list items and quotes draw them before reaching here.
         return (
           <Text key={key} selectable style={styles.imageAlt}>
             {span.alt === "" ? span.src : span.alt}
@@ -644,17 +681,27 @@ function renderInline(
         // Other targets carry a path mark, not an href that can navigate.
         const web = Platform.OS === "web";
         const allowed = isAllowedLink(span.href);
+        // A `file://` URL or a local path is never opened: a press shows it in
+        // the file manager, as a path in prose does.
+        const localPath = allowed ? null : localPathFromHref(span.href);
         return (
           <Text
             key={key}
             selectable
             accessibilityRole="link"
+            {...(localPath !== null && onRevealFile
+              ? { accessibilityLabel: `Show ${localPath} in the file manager` }
+              : {})}
             {...(web && allowed ? ({ href: span.href } as object) : {})}
             {...(web && !allowed
               ? ({ dataSet: { bcpath: span.href } } as unknown as TextProps)
               : {})}
             onPress={(event) => {
               if (web) event.preventDefault();
+              if (localPath !== null) {
+                onRevealFile?.(localPath);
+                return;
+              }
               openLink(span.href);
             }}
             style={styles.link}
@@ -861,6 +908,17 @@ function buildStyles(tokens: ExtendedThemeTokens, base: VariantMetrics): Markdow
       fontFamily: bodyFont,
       fontSize: metrics.bodySize,
       lineHeight: metrics.bodyLineHeight,
+      color: tokens.foregroundMuted,
+      textDecorationLine: "line-through",
+    },
+    // The column an item with a picture stacks in. `minWidth` lets the image
+    // shrink to the card instead of pushing the row past it.
+    itemBody: {
+      flex: 1,
+      minWidth: 0,
+      gap: 8,
+    },
+    itemRunDone: {
       color: tokens.foregroundMuted,
       textDecorationLine: "line-through",
     },
