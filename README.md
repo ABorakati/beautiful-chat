@@ -198,7 +198,7 @@ Devicon brand marks, and the file-manager link.
 
 | Group | Setting | Effect |
 | --- | --- | --- |
-| Appearance | Accent colour | Follow the Paseo theme, or choose Jade, Violet, Amber, or Rose. |
+| Appearance | Accent colour | Follow the Paseo theme, choose Jade, Violet, Amber, or Rose, or mix a custom colour with the hue strip or a hex value. |
 | Appearance | Use Paseo fonts | Use Paseo's interface and code fonts and its Code size on desktop and web. Empty font settings keep your plugin font choices. All monospace text uses one size: Paseo's Code size here, otherwise 12. |
 | Appearance | Interface font | Choose Inter or the system font. A font set in Paseo takes priority when Use Paseo fonts is on. |
 | Appearance | Code font | Use Iosevka with ligatures, Iosevka with each symbol separate, or any installed font family. A custom font takes priority over Paseo's; otherwise a code font set in Paseo takes priority when Use Paseo fonts is on. |
@@ -208,6 +208,9 @@ Devicon brand marks, and the file-manager link.
 | Appearance | Pointer glow | Show a light under the pointer on cards on desktop and web. Reduced motion disables this effect. |
 | Replies | Assistant markdown | Style headings, lists, code, and images, including local files through the daemon. Disable this setting for Mermaid diagrams and Paseo's file-path links. |
 | Replies | Markdown style | Choose Document, Compact, or Terminal. This choice is disabled when Assistant markdown is off. |
+| Replies | Highlight marks | On by default. Show `==text==` in a reply as a marker highlight. Disable this setting to keep the equals signs as typed. |
+| Replies | Mark colour | Choose the highlight wash, or a custom colour. Shown while Highlight marks is on. |
+| Replies | Bold colour | Keep bold text in the surrounding colour, use the accent, or choose a preset or custom colour. |
 | Replies | Long code blocks | Fold reply code blocks over 30 or 60 lines to a 10-line preview. Copy keeps the whole block. |
 | Prompts | Enhanced prompt bubble | Show the plugin's prompt bubble without pasted images. Disable this setting for Paseo's bubble with images. |
 | Prompts | Long prompts | Fold prompts over 15 or 30 lines to an 8-line preview. Paseo's own bubble does not fold. |
@@ -356,6 +359,13 @@ Actual macOS and Linux launchers remain untested.
 
 Web links with `http`, `https`, or `mailto` use real anchors in replies.
 The host can offer link-address actions. A normal press still uses Paseo's external opener.
+
+Paths a reply mentions in its prose are detected too: an absolute path, a home path, or a relative
+path ending in a file extension draws as a link. Pressing it shows the file in the file manager,
+like a file name on a tool card. On desktop and web, a right click opens the path menu above, whose
+**Open in Default App** asks first under the same rules. A `:55` line selector is accepted and
+stripped when the daemon resolves. Detection is deliberately conservative: half-width and
+full-width punctuation both end a candidate, and a relative token without an extension stays prose.
 
 ## Unmapped output
 

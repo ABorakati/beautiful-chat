@@ -16,7 +16,8 @@ export const ACCENT_PRESETS = {
   rose: "#f43f5e",
 } as const;
 
-export type AccentPreset = keyof typeof ACCENT_PRESETS;
+/** `"custom"` follows `accentCustomColor`, which the picker edits. */
+export type AccentPreset = keyof typeof ACCENT_PRESETS | "custom";
 export type UiFontPreference = "inter" | "system";
 /**
  * `code` and `plain` are the embedded Iosevka with and without ligatures, and
@@ -50,6 +51,37 @@ export const TEXT_SIZE_OPTIONS = [
   { value: "1.15", label: "Large" },
   { value: "1.3", label: "XL" },
 ] as const;
+
+/**
+ * Highlighter pastels, the colours a real marker leaves on paper. `null` is
+ * the built-in wash the mark style falls back to; `"custom"` (in the type)
+ * follows `markCustomColor`.
+ */
+export const MARK_COLOR_PRESETS = {
+  default: null,
+  yellow: "#ffd43b",
+  green: "#8ce99a",
+  blue: "#74c0fc",
+  pink: "#fcc2d7",
+  orange: "#ffc078",
+} as const;
+export type MarkColorPreset = keyof typeof MARK_COLOR_PRESETS | "custom";
+
+/**
+ * Text-weight colours for bold, picked from the Radix text steps so one hex
+ * holds its contrast on dark and light surfaces alike. `null` keeps bold
+ * inheriting the text colour; `"accent"` follows the theme's accent.
+ */
+export const BOLD_COLOR_PRESETS = {
+  inherit: null,
+  accent: "accent",
+  rose: "#e64980",
+  orange: "#f76707",
+  green: "#40c057",
+  blue: "#228be6",
+  violet: "#845ef7",
+} as const;
+export type BoldColorPreset = keyof typeof BOLD_COLOR_PRESETS | "custom";
 
 export interface EnhancerPreferences {
   accent: AccentPreset;
@@ -114,6 +146,15 @@ export interface EnhancerPreferences {
   codeFoldLimit: CodeFoldLimit;
   /** A prompt that runs past this many lines folds to a preview. Zero never folds. */
   promptFoldLimit: PromptFoldLimit;
+  /** Renders ==text== in a reply as a marker highlight. Off shows the syntax as typed. */
+  markSyntax: boolean;
+  markColor: MarkColorPreset;
+  boldColor: BoldColorPreset;
+
+  /** The hex behind each `"custom"` choice, edited by the colour picker. */
+  accentCustomColor: string;
+  markCustomColor: string;
+  boldCustomColor: string;
 }
 
 const STORAGE_KEY = "paseo/beautiful-chat/preferences/v1";
@@ -142,6 +183,12 @@ export const DEFAULT_PREFERENCES: Readonly<EnhancerPreferences> = {
   liveChecklist: true,
   codeFoldLimit: 30,
   promptFoldLimit: 15,
+  markSyntax: true,
+  markColor: "default",
+  boldColor: "inherit",
+  accentCustomColor: "#38bdf8",
+  markCustomColor: "#f5d90a",
+  boldCustomColor: "#e64980",
 };
 
 // Fails to compile when a preference is missing from the saved schema, or

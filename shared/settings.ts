@@ -7,6 +7,13 @@ function optional<Schema extends z.ZodType>(schema: Schema) {
 }
 
 const boolean = optional(z.boolean());
+/** A custom colour from the picker: `#rrggbb`, stored lower-case. */
+const hex = optional(
+  z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/)
+    .transform((value) => value.toLowerCase()),
+);
 
 /**
  * Explicit choices only, so a reset restores the defaults without replaying
@@ -14,7 +21,7 @@ const boolean = optional(z.boolean());
  * to the client's default. Preferences are shared by all clients of the host.
  */
 export const preferenceOverridesSchema = z.object({
-  accent: optional(z.enum(["host", "jade", "violet", "amber", "rose"])),
+  accent: optional(z.enum(["host", "jade", "violet", "amber", "rose", "custom"])),
   uiFont: optional(z.enum(["inter", "system"])),
   codeFont: optional(z.enum(["code", "plain", "custom"])),
   customCodeFont: optional(z.string().max(200)),
@@ -28,6 +35,14 @@ export const preferenceOverridesSchema = z.object({
   confirmOpenPath: boolean,
   assistantMarkdown: boolean,
   markdownVariant: optional(z.enum(["document", "compact", "terminal"])),
+  markSyntax: boolean,
+  markColor: optional(z.enum(["default", "yellow", "green", "blue", "pink", "orange", "custom"])),
+  boldColor: optional(
+    z.enum(["inherit", "accent", "rose", "orange", "green", "blue", "violet", "custom"]),
+  ),
+  accentCustomColor: hex,
+  markCustomColor: hex,
+  boldCustomColor: hex,
   paseoToolFolding: boolean,
   overviewReasoning: boolean,
   collapseTools: optional(

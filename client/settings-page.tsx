@@ -20,7 +20,11 @@ import {
   updateEnhancerPreferences,
   useEnhancerPreferences,
   useEnhancerPreferencesError,
+  BOLD_COLOR_PRESETS,
+  MARK_COLOR_PRESETS,
   type AccentPreset,
+  type BoldColorPreset,
+  type MarkColorPreset,
   type CodeFoldLimit,
   type CodeFontPreference,
   type CollapseLineLimit,
@@ -38,6 +42,46 @@ const ACCENT_OPTIONS: ReadonlyArray<{ id: AccentPreset; label: string }> = [
   { id: "amber", label: "Amber" },
   { id: "rose", label: "Rose" },
 ];
+const MARK_COLOUR_OPTIONS: ReadonlyArray<{ value: MarkColorPreset; label: string; color: string | null }> = [
+  { value: "default", label: "Default", color: null },
+  { value: "yellow", label: "Yellow", color: MARK_COLOR_PRESETS.yellow },
+  { value: "green", label: "Mint", color: MARK_COLOR_PRESETS.green },
+  { value: "blue", label: "Sky", color: MARK_COLOR_PRESETS.blue },
+  { value: "pink", label: "Rose", color: MARK_COLOR_PRESETS.pink },
+  { value: "orange", label: "Peach", color: MARK_COLOR_PRESETS.orange },
+];
+
+/** The accent swatch resolves against the live theme, so it is built per render. */
+function boldColourOptions(accent: string): ReadonlyArray<{ value: BoldColorPreset; label: string; color: string | null }> {
+  return [
+    { value: "inherit", label: "Inherit", color: null },
+    { value: "accent", label: "Accent", color: accent },
+    { value: "rose", label: "Rose", color: BOLD_COLOR_PRESETS.rose },
+    { value: "orange", label: "Orange", color: BOLD_COLOR_PRESETS.orange },
+    { value: "green", label: "Green", color: BOLD_COLOR_PRESETS.green },
+    { value: "blue", label: "Blue", color: BOLD_COLOR_PRESETS.blue },
+    { value: "violet", label: "Violet", color: BOLD_COLOR_PRESETS.violet },
+  ];
+}
+
+const HEX_RE = /^#[0-9a-fA-F]{6}$/;
+const HUE_STEPS = 24;
+
+/** Converts one hue at the picker's fixed saturation and lightness to hex. */
+function hueToHex(hue: number): string {
+  const saturation = 0.72;
+  const lightness = 0.55;
+  const a = saturation * Math.min(lightness, 1 - lightness);
+  const channel = (n: number) => {
+    const k = (n + hue / 30) % 12;
+    const v = lightness - a * Math.max(-1, Math.min(k - 3, 9 - k, 1));
+    return Math.round(255 * v)
+      .toString(16)
+      .padStart(2, "0");
+  };
+  return `#${channel(0)}${channel(8)}${channel(4)}`;
+}
+
 const TOOL_GROUP_OPTIONS: ReadonlyArray<{ value: CollapsibleToolGroup; label: string }> = [
   { value: "shell", label: "Shell and Git" },
   { value: "write", label: "Writes" },
@@ -81,6 +125,112 @@ function Chip({ text, tokens }: { text: string; tokens: ExtendedThemeTokens }) {
     >
       {text}
     </Text>
+  );
+}
+
+/**
+ * A colour picker built from the runtime's own primitives: a strip of hue
+ * steps for quick picks and a hex field for an exact colour. A stepped strip
+ * stands in for a gradient, since the plugin sandbox admits no SVG to draw
+ * one, and twenty-four steps read as continuous at chip width.
+ */
+function ColourPicker({ hex, onChange, label, tokens }: { hex: string; onChange(hex: string): void; label: string; tokens: ExtendedThemeTokens }) {
+  const [draft, setDraft] = useState(hex);
+  useEffect(() => setDraft(hex), [hex]);
+  const valid = HEX_RE.test(draft);
+  const commit = (): void => {
+    if (valid) onChange(draft.toLowerCase());
+    else setDraft(hex);
+  };
+  return (
+    <View style={styles.picker}>
+      <View style={styles.hueStrip}>
+        {Array.from({ length: HUE_STEPS }, (_, index) => {
+          const hue = Math.round((360 / HUE_STEPS) * index);
+          return (
+            <Pressable
+              key={hue}
+              accessibilityRole="button"
+              accessibilityLabel={`${label}: hue ${hue} degrees`}
+              onPress={() => onChange(hueToHex(hue))}
+              style={[styles.hueChip, { backgroundColor: hueToHex(hue) }]}
+            />
+          );
+        })}
+      </View>
+      <View style={styles.hexRow}>
+        <View style={[styles.swatch, { backgroundColor: valid ? draft : tokens.border }]} />
+        <TextInput
+          accessibilityLabel={`${label} hex value`}
+          value={draft}
+          onChangeText={setDraft}
+          onBlur={commit}
+          onSubmitEditing={commit}
+          maxLength={7}
+          autoCapitalize="none"
+          autoCorrect={false}
+          spellCheck={false}
+          placeholder="#f5d90a"
+          placeholderTextColor={tokens.foregroundSubtle}
+          style={[styles.hexInput, { color: tokens.foreground, backgroundColor: tokens.surface2, borderColor: valid ? tokens.borderSubtle : tokens.dangerBorder, fontFamily: tokens.fontMono }]}
+        />
+      </View>
+    </View>
+  );
+}
+
+/** Colour swatches, with an optional Custom swatch that reveals the picker. */
+function SwatchRow<T extends string>({
+  title,
+  description,
+  value,
+  options,
+  onChange,
+  customColor,
+  tokens,
+}: {
+  title: string;
+  description: string;
+  value: T;
+  options: ReadonlyArray<{ value: T; label: string; color: string | null }>;
+  onChange(value: T): void;
+  customColor?: { hex: string; onChange(hex: string): void };
+  tokens: ExtendedThemeTokens;
+}) {
+  const allOptions = customColor
+    ? [...options, { value: "custom" as T, label: "Custom", color: customColor.hex }]
+    : options;
+  return (
+    <View style={[styles.row, { borderTopColor: tokens.borderSubtle }]}>
+      <SettingText title={title} description={description} tokens={tokens} />
+      <View style={styles.swatches}>
+        {allOptions.map((option) => {
+          const selected = value === option.value;
+          return (
+            <Pressable
+              key={option.value}
+              accessibilityRole="button"
+              accessibilityLabel={`${title}: ${option.label}`}
+              accessibilityState={{ selected }}
+              aria-pressed={selected}
+              onPress={() => onChange(option.value)}
+              style={({ pressed }) => [styles.accentOption, {
+                borderColor: selected ? tokens.accent : tokens.border,
+                backgroundColor: selected ? tokens.accentBg : pressed ? tokens.surface2 : tokens.surface1,
+              }]}
+            >
+              <View style={[styles.swatch, { backgroundColor: option.color ?? tokens.border }]} />
+              <Text style={[styles.optionLabel, { color: selected ? tokens.accent : tokens.foreground, fontFamily: tokens.fontUi }]}>
+                {option.label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+      {customColor && value === "custom" ? (
+        <ColourPicker hex={customColor.hex} onChange={customColor.onChange} label={title} tokens={tokens} />
+      ) : null}
+    </View>
   );
 }
 
@@ -404,33 +554,22 @@ export function BeautifulChatSettingsPage({ theme }: PluginSurfaceProps) {
         {!wide ? preview : null}
         <View style={[styles.settingsColumn, wide && styles.flexColumn]}>
           <Section title="Appearance" tokens={tokens}>
-            <View style={[styles.row, { borderTopColor: tokens.borderSubtle }]}>
-              <SettingText title="Accent colour" description="Follow the Paseo theme, or choose a colour." tokens={tokens} />
-              <View style={styles.swatches}>
-                {ACCENT_OPTIONS.map((option) => {
-                  const selected = preferences.accent === option.id;
-                  return (
-                    <Pressable
-                      key={option.id}
-                      accessibilityRole="button"
-                      accessibilityLabel={`Accent colour: ${option.label}`}
-                      accessibilityState={{ selected }}
-                      aria-pressed={selected}
-                      onPress={() => updateEnhancerPreferences({ accent: option.id })}
-                      style={({ pressed }) => [styles.accentOption, {
-                        borderColor: selected ? tokens.accent : tokens.border,
-                        backgroundColor: selected ? tokens.accentBg : pressed ? tokens.surface2 : tokens.surface1,
-                      }]}
-                    >
-                      <View style={[styles.swatch, { backgroundColor: ACCENT_PRESETS[option.id] ?? theme.colors.accent }]} />
-                      <Text style={[styles.optionLabel, { color: selected ? tokens.accent : tokens.foreground, fontFamily: tokens.fontUi }]}>
-                        {option.label}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-            </View>
+            <SwatchRow<AccentPreset>
+              title="Accent colour"
+              description="Follow the Paseo theme, choose a colour, or mix your own."
+              value={preferences.accent}
+              options={ACCENT_OPTIONS.map((option) => ({
+                value: option.id,
+                label: option.label,
+                color: option.id === "custom" ? null : (ACCENT_PRESETS[option.id] ?? theme.colors.accent),
+              }))}
+              customColor={{
+                hex: preferences.accentCustomColor,
+                onChange: (accentCustomColor) => updateEnhancerPreferences({ accentCustomColor }),
+              }}
+              onChange={(accent) => updateEnhancerPreferences({ accent })}
+              tokens={tokens}
+            />
             <ToggleRow
               title="Use Paseo fonts"
               description="Use the fonts and Code size from Paseo's Appearance settings. Empty font settings keep your choices below."
@@ -572,6 +711,39 @@ export function BeautifulChatSettingsPage({ theme }: PluginSurfaceProps) {
                 </View>
               )}
               onChange={(markdownVariant) => updateEnhancerPreferences({ markdownVariant })}
+              tokens={tokens}
+            />
+            <ToggleRow
+              title="Highlight marks"
+              description="Show ==text== in a reply as a marker highlight. Disable this setting to keep the equals signs as typed."
+              value={preferences.markSyntax}
+              onChange={(markSyntax) => updateEnhancerPreferences({ markSyntax })}
+              tokens={tokens}
+            />
+            {preferences.markSyntax ? (
+              <SwatchRow<MarkColorPreset>
+                title="Mark colour"
+                description="Choose the wash behind highlighted text."
+                value={preferences.markColor}
+                options={MARK_COLOUR_OPTIONS}
+                customColor={{
+                  hex: preferences.markCustomColor,
+                  onChange: (markCustomColor) => updateEnhancerPreferences({ markCustomColor }),
+                }}
+                onChange={(markColor) => updateEnhancerPreferences({ markColor })}
+                tokens={tokens}
+              />
+            ) : null}
+            <SwatchRow<BoldColorPreset>
+              title="Bold colour"
+              description="Choose the colour of bold text in a reply. Inherit keeps the surrounding text colour."
+              value={preferences.boldColor}
+              options={boldColourOptions(tokens.accent)}
+              customColor={{
+                hex: preferences.boldCustomColor,
+                onChange: (boldCustomColor) => updateEnhancerPreferences({ boldCustomColor }),
+              }}
+              onChange={(boldColor) => updateEnhancerPreferences({ boldColor })}
               tokens={tokens}
             />
             <ChoiceRow<`${CodeFoldLimit}`>
@@ -740,5 +912,10 @@ const styles = StyleSheet.create({
   swatches: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   accentOption: { flexDirection: "row", alignItems: "center", minHeight: 44, gap: 8, borderWidth: 1, borderRadius: radius.block, paddingHorizontal: 12, paddingVertical: 8 },
   swatch: { width: 16, height: 16, borderRadius: radius.chip },
+  picker: { gap: 8 },
+  hueStrip: { flexDirection: "row", gap: 1 },
+  hueChip: { flex: 1, height: 24, borderRadius: 2 },
+  hexRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  hexInput: { minHeight: 44, width: 120, borderWidth: 1, borderRadius: radius.block, paddingHorizontal: 12, paddingVertical: 8, fontSize: 13 },
   reset: { alignSelf: "flex-start", minHeight: 44, justifyContent: "center", borderWidth: 1, borderRadius: radius.block, paddingHorizontal: 16, paddingVertical: 12 },
 });

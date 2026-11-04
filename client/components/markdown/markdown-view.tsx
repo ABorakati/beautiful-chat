@@ -8,7 +8,12 @@ import { selectionSurface } from "../selection-actions";
 import { SyntaxHighlightBlock } from "../syntax-highlight";
 import { isAllowedLink, openLink } from "../open-link";
 import { pathTargetProps } from "../path-link-menu";
-import { parseMarkdown, type MdAlign, type MdBlock, type MdInline, type MdListItem } from "./parse";
+import {
+  parseMarkdown,
+  isFilePathToken,
+  type MdAlign, type MdBlock, type MdInline,
+  type MdListItem,
+} from "./parse";
 import { MarkdownImage } from "./markdown-image";
 
 /**
@@ -28,6 +33,17 @@ export interface MarkdownViewProps {
   foldCodeAfter?: number;
   /** The agent's working directory, which a relative image path resolves against. */
   cwd?: string | null;
+  /**
+   * Renders ==text== as a marker highlight. Off keeps the equals signs as the
+   * author typed them.
+   */
+  marks?: boolean;
+  /**
+   * Shows a local path the reply mentions in the file manager. Undefined
+   * leaves every path as text. Opening a file goes through the path menu,
+   * which asks first.
+   */
+  onRevealFile?: (path: string) => void;
 }
 
 type MdTableBlock = Extract<MdBlock, { kind: "table" }>;
@@ -227,6 +243,7 @@ interface MarkdownStyles {
   strong: TextStyle;
   emphasis: TextStyle;
   strike: TextStyle;
+  mark: TextStyle;
   codeSpan: TextStyle;
   link: TextStyle;
   imageAlt: TextStyle;
@@ -239,18 +256,27 @@ interface RenderContext {
   metrics: VariantMetrics;
   foldCodeAfter: number;
   cwd: string | null;
+  onRevealFile?: (path: string) => void;
 }
 
-export function MarkdownView({ text, tokens, variant, foldCodeAfter = 0, cwd }: MarkdownViewProps) {
-  const blocks = useMemo(() => parseMarkdown(text), [text]);
+export function MarkdownView({
+  text,
+  tokens,
+  variant,
+  foldCodeAfter = 0,
+  cwd,
+  marks = true,
+  onRevealFile,
+}: MarkdownViewProps) {
+  const blocks = useMemo(() => parseMarkdown(text, { marks }), [text, marks]);
   const metrics = useMemo(
     () => variantMetrics(variant, tokens.codeFontSize, tokens.textScale),
     [variant, tokens.codeFontSize, tokens.textScale],
   );
   const styles = useMemo(() => buildStyles(tokens, metrics), [tokens, metrics]);
   const context = useMemo<RenderContext>(
-    () => ({ styles, tokens, metrics, foldCodeAfter, cwd: cwd ?? null }),
-    [styles, tokens, metrics, foldCodeAfter, cwd],
+    () => ({ styles, tokens, metrics, foldCodeAfter, cwd: cwd ?? null, onRevealFile }),
+    [styles, tokens, metrics, foldCodeAfter, cwd, onRevealFile],
   );
 
   return (
@@ -277,7 +303,7 @@ function renderBlock(
             {metrics.headingHash ? (
               <Text style={styles.headingHash}>{HASH_LABELS[block.level - 1] ?? "# "}</Text>
             ) : null}
-            {renderInline(block.spans, styles, key)}
+            {renderInline(block.spans, styles, key, context.onRevealFile)}
           </Text>
           {metrics.headingRule && block.level <= 2 ? <View style={styles.headingRule} /> : null}
         </View>
@@ -301,11 +327,11 @@ function renderBlock(
     case "quote":
       return (
         <View key={key} style={styles.quote}>
-          {block.paragraphs.map((spans, index) => (
-            <Text key={`${key}q${index}`} selectable style={styles.quoteText}>
-              {renderInline(spans, styles, `${key}q${index}`)}
-            </Text>
-          ))}
+      {block.paragraphs.map((spans, index) => (
+        <Text key={`${key}q${index}`} selectable style={styles.quoteText}>
+          {renderInline(spans, styles, `${key}q${index}`, context.onRevealFile)}
+        </Text>
+      ))}
         </View>
       );
 
@@ -351,7 +377,7 @@ function renderParagraph(spans: MdInline[], key: string, context: RenderContext)
   if (!spans.some((span) => span.kind === "image")) {
     return (
       <Text key={key} selectable style={styles.paragraph}>
-        {renderInline(spans, styles, key)}
+        {renderInline(spans, styles, key, context.onRevealFile)}
       </Text>
     );
   }
@@ -365,7 +391,7 @@ function renderParagraph(spans: MdInline[], key: string, context: RenderContext)
       const runKey = `${key}p${parts.length}`;
       parts.push(
         <Text key={runKey} selectable style={styles.paragraph}>
-          {renderInline(run, styles, runKey)}
+          {renderInline(run, styles, runKey, context.onRevealFile)}
         </Text>,
       );
     }
@@ -410,7 +436,7 @@ function renderItem(
   // item's first character instead of under its marker.
   const body = (
     <Text selectable style={item.checked === true ? styles.itemTextDone : styles.itemText}>
-      {renderInline(item.spans, styles, key)}
+      {renderInline(item.spans, styles, key, context.onRevealFile)}
     </Text>
   );
 
@@ -481,7 +507,7 @@ function renderTable(block: MdTableBlock, key: string, context: RenderContext): 
                   { width: widths[column] ?? metrics.columnMin },
                 ]}
               >
-                {renderInline(cell, styles, cellKey)}
+                {renderInline(cell, styles, cellKey, context.onRevealFile)}
               </Text>
             );
           })}
@@ -500,7 +526,7 @@ function renderTable(block: MdTableBlock, key: string, context: RenderContext): 
                     { width: widths[column] ?? metrics.columnMin },
                   ]}
                 >
-                  {renderInline(cell, styles, cellKey)}
+                  {renderInline(cell, styles, cellKey, context.onRevealFile)}
                 </Text>
               );
             })}
@@ -511,38 +537,88 @@ function renderTable(block: MdTableBlock, key: string, context: RenderContext): 
   );
 }
 
+/**
+ * Marks a path for the web path menu (Copy Path, Show in File Manager, and an
+ * Open that asks first), whether or not the path is absolute: the menu
+ * resolves a relative one against the agent folder.
+ */
+function pathMarkProps(path: string): TextProps | null {
+  return Platform.OS === "web" ? ({ dataSet: { bcpath: path } } as unknown as TextProps) : null;
+}
+
 function renderInline(
   spans: MdInline[],
   styles: MarkdownStyles,
   keyPrefix: string,
+  onRevealFile?: (path: string) => void,
 ): React.ReactNode[] {
   return spans.map((span, index) => {
     const key = `${keyPrefix}i${index}`;
     switch (span.kind) {
       case "text":
         return span.text;
-      case "codeSpan":
+      case "codeSpan": {
+        // The host draws an inline-code path as a link too, so a path the
+        // author wrapped in backticks keeps the same affordance here.
+        const codePath = onRevealFile ? isFilePathToken(span.text) : null;
+        if (codePath !== null) {
+          return (
+            <Text
+              key={key}
+              selectable
+              accessibilityRole="link"
+              accessibilityLabel={`Show ${codePath} in the file manager`}
+              onPress={() => onRevealFile?.(codePath)}
+              style={[styles.codeSpan, styles.link]}
+              {...pathMarkProps(codePath)}
+            >
+              {span.text}
+            </Text>
+          );
+        }
         return (
           <Text key={key} selectable style={styles.codeSpan} {...pathTargetProps(span.text)}>
             {span.text}
           </Text>
         );
+      }
+      case "filePath":
+        if (!onRevealFile) return span.path;
+        return (
+          <Text
+            key={key}
+            selectable
+            accessibilityRole="link"
+            accessibilityLabel={`Show ${span.path} in the file manager`}
+            onPress={() => onRevealFile(span.path)}
+            style={styles.link}
+            {...pathMarkProps(span.path)}
+          >
+            {span.path}
+          </Text>
+        );
       case "strong":
         return (
           <Text key={key} selectable style={styles.strong}>
-            {renderInline(span.spans, styles, key)}
+            {renderInline(span.spans, styles, key, onRevealFile)}
           </Text>
         );
       case "emphasis":
         return (
           <Text key={key} selectable style={styles.emphasis}>
-            {renderInline(span.spans, styles, key)}
+            {renderInline(span.spans, styles, key, onRevealFile)}
           </Text>
         );
       case "strike":
         return (
           <Text key={key} selectable style={styles.strike}>
-            {renderInline(span.spans, styles, key)}
+            {renderInline(span.spans, styles, key, onRevealFile)}
+          </Text>
+        );
+      case "mark":
+        return (
+          <Text key={key} selectable style={styles.mark}>
+            {renderInline(span.spans, styles, key, onRevealFile)}
           </Text>
         );
       case "image":
@@ -575,7 +651,7 @@ function renderInline(
             }}
             style={styles.link}
           >
-            {renderInline(span.spans, styles, key)}
+            {renderInline(span.spans, styles, key, onRevealFile)}
           </Text>
         );
       }
@@ -619,6 +695,9 @@ function inlineWidth(spans: MdInline[], size: number, ratio: number): number {
         break;
       case "image":
         width += span.alt.length * size * ratio;
+        break;
+      case "filePath":
+        width += span.path.length * size * ratio;
         break;
       default:
         width += inlineWidth(span.spans, size, ratio);
@@ -837,7 +916,7 @@ function buildStyles(tokens: ExtendedThemeTokens, base: VariantMetrics): Markdow
     cellRight: { textAlign: "right" },
     strong: {
       fontWeight: "700",
-      color: tokens.foreground,
+      color: tokens.strongColor ?? tokens.foreground,
     },
     emphasis: {
       fontStyle: "italic",
@@ -845,6 +924,13 @@ function buildStyles(tokens: ExtendedThemeTokens, base: VariantMetrics): Markdow
     strike: {
       textDecorationLine: "line-through",
       color: tokens.foregroundMuted,
+    },
+    // The wash comes from the mark colour preference; a mark is an author's
+    // annotation rather than a state, so no theme token is spent on it.
+    mark: {
+      color: tokens.foreground,
+      backgroundColor: tokens.markBackground,
+      borderRadius: 3,
     },
     codeSpan: {
       fontFamily: tokens.fontMono,

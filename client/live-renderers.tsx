@@ -287,6 +287,18 @@ export function LiveAssistantRenderer({
   // A markdown image with a relative path resolves against the agent's cwd.
   const cwd = useAgent(agentId, (agent) => agent.cwd);
 
+  // A path the reply mentions shows in the daemon machine's file manager, the
+  // same safe action a tool card's file name takes. Opening it goes through
+  // the path menu, which asks first.
+  const revealPath = useRpc(revealPathRpc);
+  const revealFile = useCallback(
+    (path: string) => {
+      void revealPath({ cwd: cwd ?? "", path, agentId }).catch(() => {});
+    },
+    [agentId, cwd, revealPath],
+  );
+
+
   // Replacing the reply costs the host's footer, which the stream layout hangs
   // off an `assistant_message` item that no longer exists. Rebuild it where the
   // host puts it: under the newest message, once, not under every reply.
@@ -310,6 +322,8 @@ export function LiveAssistantRenderer({
           variant={preferences.markdownVariant}
           foldCodeAfter={preferences.codeFoldLimit}
           cwd={cwd}
+          marks={preferences.markSyntax}
+          onRevealFile={revealFile}
         />
       )}
       {isTail && !envelope ? (

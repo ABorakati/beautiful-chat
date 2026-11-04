@@ -1,7 +1,13 @@
 import { useMemo } from "react";
 import { Platform } from "react-native";
 import type { PluginTheme } from "@getpaseo/plugin";
-import { DEFAULT_PREFERENCES, type EnhancerPreferences, ACCENT_PRESETS } from "../preferences";
+import {
+  BOLD_COLOR_PRESETS,
+  DEFAULT_PREFERENCES,
+  MARK_COLOR_PRESETS,
+  type EnhancerPreferences,
+  ACCENT_PRESETS,
+} from "../preferences";
 import { readHostAppSettings } from "../host-settings";
 import { DEFAULT_HOST_CODE_FONT_SIZE, useHostCodeFontSize } from "../host-appearance";
 
@@ -98,6 +104,11 @@ export interface ExtendedThemeTokens {
    * heights, gutters) do not go through this: only what a reader reads.
    */
   fs(base: number): number;
+
+  /** The wash behind ==mark== highlights; derived from the chosen preset. */
+  markBackground: string;
+  /** Bold text in a reply, or null to inherit the surrounding colour. */
+  strongColor: string | null;
 
   // Surfaces
   surface0: string;
@@ -235,7 +246,10 @@ export function buildThemeTokens(
   const codeFonts = resolveCodeFonts(preferences);
   const isDark = isDarkSurface(colors.surface0);
   const fg = colors.foreground;
-  const accent = ACCENT_PRESETS[preferences.accent] ?? colors.accent;
+  const accent =
+    preferences.accent === "custom"
+      ? preferences.accentCustomColor
+      : (ACCENT_PRESETS[preferences.accent] ?? colors.accent);
   const success = isDark ? "#4cb782" : "#1f8a5b";
   const warning = isDark ? "#d9a53f" : "#a36a00";
   const danger = colors.statusDanger;
@@ -246,6 +260,14 @@ export function buildThemeTokens(
   const textScale = preferences.textScale;
   const fs = (base: number) => Math.round(base * textScale * 2) / 2;
   const scaledCodeFontSize = fs(codeFontSize);
+  const markBase =
+    preferences.markColor === "custom"
+      ? preferences.markCustomColor
+      : (MARK_COLOR_PRESETS[preferences.markColor] ?? null);
+  const boldPreset =
+    preferences.boldColor === "custom"
+      ? preferences.boldCustomColor
+      : BOLD_COLOR_PRESETS[preferences.boldColor];
 
   return {
     isDark,
@@ -258,6 +280,14 @@ export function buildThemeTokens(
     textScale,
     fs,
 
+    // The highlighter wash thins out on dark surfaces so the text keeps its
+    // contrast against the card. The built-in default is the marker yellow.
+    markBackground: markBase
+      ? withAlpha(markBase, isDark ? 0.3 : 0.42)
+      : isDark
+        ? "rgba(245, 208, 10, 0.28)"
+        : "rgba(245, 208, 10, 0.45)",
+    strongColor: boldPreset === "accent" ? accent : (boldPreset ?? null),
     surface0: colors.surface0,
     surface1: withAlpha(fg, isDark ? 0.03 : 0.025),
     surface2: withAlpha(fg, isDark ? 0.06 : 0.045),
