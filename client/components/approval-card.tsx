@@ -128,7 +128,7 @@ export function ApprovalCard({ request, tokens, onApprove, onDeny }: ApprovalCar
           color: tokens.foregroundSubtle,
         },
         metaValue: {
-          fontSize: 11,
+          fontSize: tokens.codeFontSize,
           fontFamily: tokens.fontMono,
           color: tokens.foregroundMuted,
         },

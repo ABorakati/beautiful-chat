@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Animated, Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { Animated, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import type { PluginSurfaceProps } from "@getpaseo/plugin/client";
 import { hostFontEscape } from "./components/host-font-escape";
 import {
@@ -7,7 +7,8 @@ import {
   fontCode,
   fontMono,
   fontUi,
-  buildThemeTokens,
+  resolveCodeFonts,
+  useThemeTokens,
   type ExtendedThemeTokens,
 } from "./components/theme-tokens";
 import { SettingsPreview } from "./settings-preview";
@@ -341,7 +342,7 @@ function Section({ title, tokens, children }: { title: string; tokens: ExtendedT
 /** Paseo mounts this page under the host's Plugin settings. */
 export function BeautifulChatSettingsPage({ theme }: PluginSurfaceProps) {
   const preferences = useEnhancerPreferences();
-  const tokens = useMemo(() => buildThemeTokens(theme.colors, preferences), [preferences, theme.colors]);
+  const tokens = useThemeTokens(theme.colors, preferences);
   const [wide, setWide] = useState(false);
   const rootRef = useRef<View>(null);
   const [paneWidth, setPaneWidth] = useState<number | null>(null);
@@ -414,7 +415,7 @@ export function BeautifulChatSettingsPage({ theme }: PluginSurfaceProps) {
             </View>
             <ToggleRow
               title="Use Paseo fonts"
-              description="Use fonts from Paseo's Appearance settings. Empty font settings keep your choices below."
+              description="Use the fonts and Code size from Paseo's Appearance settings. Empty font settings keep your choices below."
               chip="Desktop & web"
               value={preferences.hostFonts}
               onChange={(hostFonts) => updateEnhancerPreferences({ hostFonts })}
@@ -431,15 +432,57 @@ export function BeautifulChatSettingsPage({ theme }: PluginSurfaceProps) {
               tokens={tokens}
             />
             <ChoiceRow<CodeFontPreference>
-              title="Code glyphs"
-              description="Join code symbols with ligatures, or show each symbol separately."
+              title="Code font"
+              description="The face for code, diffs, terminal output, and every other monospace surface. Ligatures join code symbols in code blocks only; Literal shows each symbol separately. Custom takes any installed font family."
               value={preferences.codeFont}
-              options={[{ value: "code", label: "Ligatures" }, { value: "plain", label: "Literal" }]}
-              renderPreview={(value) => <Text style={[styles.codeSample, { color: tokens.foreground, fontFamily: value === "code" ? fontCode : fontMono }]}>{"=> !== <="}</Text>}
-              hint={preferences.hostFonts ? "Paseo's code font takes priority when it is set." : undefined}
+              options={[{ value: "code", label: "Ligatures" }, { value: "plain", label: "Literal" }, { value: "custom", label: "Custom" }]}
+              renderPreview={(value) => (
+                <Text
+                  style={[
+                    styles.codeSample,
+                    {
+                      color: tokens.foreground,
+                      fontFamily:
+                        value === "custom"
+                          ? resolveCodeFonts({ ...preferences, codeFont: "custom", hostFonts: false }).code
+                          : value === "code"
+                            ? fontCode
+                            : fontMono,
+                    },
+                  ]}
+                >
+                  {"=> !== <="}
+                </Text>
+              )}
+              hint={
+                preferences.hostFonts && preferences.codeFont !== "custom"
+                  ? "Paseo's code font takes priority when it is set. A custom font takes priority over it."
+                  : undefined
+              }
               onChange={(codeFont) => updateEnhancerPreferences({ codeFont })}
               tokens={tokens}
             />
+            {preferences.codeFont === "custom" ? (
+              <TextInput
+                accessibilityLabel="Custom code font family"
+                value={preferences.customCodeFont}
+                onChangeText={(customCodeFont) => updateEnhancerPreferences({ customCodeFont })}
+                placeholder="JetBrains Mono"
+                placeholderTextColor={tokens.foregroundSubtle}
+                autoCapitalize="none"
+                autoCorrect={false}
+                spellCheck={false}
+                style={[
+                  styles.fontInput,
+                  {
+                    color: tokens.foreground,
+                    backgroundColor: tokens.surface2,
+                    borderColor: tokens.borderSubtle,
+                    fontFamily: tokens.fontCode,
+                  },
+                ]}
+              />
+            ) : null}
             <ChoiceRow<LineSpacingPreference>
               title="Line spacing"
               description="Compact keeps the original spacing. Balanced adds 15% and Spacious adds 30%."
@@ -659,6 +702,7 @@ const styles = StyleSheet.create({
   optionLabel: { fontSize: 12, lineHeight: 16, fontWeight: "600" },
   fontSample: { fontSize: 28, lineHeight: 36 },
   codeSample: { fontSize: 16, lineHeight: 24 },
+  fontInput: { minHeight: 44, borderWidth: 1, borderRadius: radius.block, paddingHorizontal: 12, paddingVertical: 8, fontSize: 13 },
   spacingSample: { width: "100%", maxWidth: 72 },
   sampleLine: { width: "100%", height: 4, borderRadius: radius.chip },
   shortLine: { width: "64%" },

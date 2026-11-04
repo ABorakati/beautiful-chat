@@ -124,6 +124,25 @@ const VARIANT_METRICS: Record<MarkdownVariant, VariantMetrics> = {
   },
 };
 
+/**
+ * A variant that sets its body in the code face takes Paseo's Code size, with
+ * its leading and headings scaled to keep their proportions.
+ */
+function variantMetrics(variant: MarkdownVariant, codeFontSize: number): VariantMetrics {
+  const base = VARIANT_METRICS[variant];
+  if (!base.mono) return base;
+  const scale = codeFontSize / base.bodySize;
+  // Headings snap to half points, like the hand-set sizes they replace.
+  const scaled = (size: number) => Math.round(size * scale * 2) / 2;
+  const [size1, size2, size3, size4] = base.headingSizes;
+  return {
+    ...base,
+    bodySize: codeFontSize,
+    bodyLineHeight: Math.round(base.bodyLineHeight * scale),
+    headingSizes: [scaled(size1), scaled(size2), scaled(size3), scaled(size4)],
+  };
+}
+
 // One marker per level, so a nested item is distinguishable from its parent
 // even when the indent is clipped by a narrow card.
 const BULLETS = ["\u2022", "\u25e6", "\u2023"] as const;
@@ -207,10 +226,14 @@ interface RenderContext {
 
 export function MarkdownView({ text, tokens, variant, foldCodeAfter = 0, cwd }: MarkdownViewProps) {
   const blocks = useMemo(() => parseMarkdown(text), [text]);
-  const styles = useMemo(() => buildStyles(tokens, variant), [tokens, variant]);
+  const metrics = useMemo(
+    () => variantMetrics(variant, tokens.codeFontSize),
+    [variant, tokens.codeFontSize],
+  );
+  const styles = useMemo(() => buildStyles(tokens, metrics), [tokens, metrics]);
   const context = useMemo<RenderContext>(
-    () => ({ styles, tokens, metrics: VARIANT_METRICS[variant], foldCodeAfter, cwd: cwd ?? null }),
-    [styles, tokens, variant, foldCodeAfter, cwd],
+    () => ({ styles, tokens, metrics, foldCodeAfter, cwd: cwd ?? null }),
+    [styles, tokens, metrics, foldCodeAfter, cwd],
   );
 
   return (
@@ -610,14 +633,13 @@ function columnWidths(block: MdTableBlock, metrics: VariantMetrics): number[] {
   return widths;
 }
 
-function buildStyles(tokens: ExtendedThemeTokens, variant: MarkdownVariant): MarkdownStyles {
-  const base = VARIANT_METRICS[variant];
+function buildStyles(tokens: ExtendedThemeTokens, base: VariantMetrics): MarkdownStyles {
   const metrics = { ...base, bodyLineHeight: base.bodyLineHeight * tokens.leading };
   const bodyFont = metrics.mono ? tokens.fontMono : tokens.fontUi;
   const [size1, size2, size3, size4] = metrics.headingSizes;
   // The terminal variant's headings sit within a point of body size, so the
   // accent on h1 and the hash run carry the hierarchy that size cannot.
-  const topColor = variant === "terminal" ? tokens.accent : tokens.foreground;
+  const topColor = metrics.headingHash ? tokens.accent : tokens.foreground;
 
   return StyleSheet.create({
     root: {
@@ -681,8 +703,8 @@ function buildStyles(tokens: ExtendedThemeTokens, variant: MarkdownVariant): Mar
     },
     plain: {
       fontFamily: tokens.fontMono,
-      fontSize: metrics.bodySize - 0.5,
-      lineHeight: metrics.bodyLineHeight,
+      fontSize: tokens.codeFontSize,
+      lineHeight: tokens.codeLineHeight,
       color: tokens.foregroundMuted,
     },
     listBlock: {
@@ -809,7 +831,7 @@ function buildStyles(tokens: ExtendedThemeTokens, variant: MarkdownVariant): Mar
     },
     codeSpan: {
       fontFamily: tokens.fontMono,
-      fontSize: metrics.bodySize - 1,
+      fontSize: tokens.codeFontSize,
       // A neutral tint, not the accent: inline code is not a link and must not
       // borrow the one colour that means "action" everywhere else in the card.
       backgroundColor: withAlpha(tokens.foreground, tokens.isDark ? 0.12 : 0.07),

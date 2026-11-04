@@ -2,6 +2,7 @@
 export interface HostAppSettings {
   uiFontFamily?: unknown;
   monoFontFamily?: unknown;
+  codeFontSize?: unknown;
   chatDisplay?: unknown;
   toolCallDetailLevel?: unknown;
   compactToolCalls?: unknown;

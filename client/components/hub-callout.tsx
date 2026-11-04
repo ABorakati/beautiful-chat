@@ -1241,7 +1241,7 @@ function useHubStyles(tokens: ExtendedThemeTokens): HubStyles {
         // chip or a duration off the card.
         rowLabel: {
           fontFamily: tokens.fontMono,
-          fontSize: 12,
+          fontSize: tokens.codeFontSize,
           color: tokens.foreground,
           flex: 1,
           minWidth: 0,
@@ -1315,8 +1315,8 @@ function useHubStyles(tokens: ExtendedThemeTokens): HubStyles {
         },
         messageText: {
           fontFamily: tokens.fontMono,
-          fontSize: 12,
-          lineHeight: 18 * tokens.leading,
+          fontSize: tokens.codeFontSize,
+          lineHeight: tokens.codeLineHeight,
           color: tokens.foreground,
         },
         replyBox: {
@@ -1343,8 +1343,8 @@ function useHubStyles(tokens: ExtendedThemeTokens): HubStyles {
         },
         codeText: {
           fontFamily: tokens.fontMono,
-          fontSize: 11,
-          lineHeight: 16 * tokens.leading,
+          fontSize: tokens.codeFontSize,
+          lineHeight: tokens.codeLineHeight,
           color: tokens.foregroundMuted,
         },
         moreLabel: {

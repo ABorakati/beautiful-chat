@@ -199,9 +199,9 @@ Devicon brand marks, and the file-manager link.
 | Group | Setting | Effect |
 | --- | --- | --- |
 | Appearance | Accent colour | Follow the Paseo theme, or choose Jade, Violet, Amber, or Rose. |
-| Appearance | Use Paseo fonts | Use Paseo's interface and code fonts on desktop and web. Empty font settings keep your plugin font choices. |
+| Appearance | Use Paseo fonts | Use Paseo's interface and code fonts and its Code size on desktop and web. Empty font settings keep your plugin font choices. All monospace text uses one size: Paseo's Code size here, otherwise 12. |
 | Appearance | Interface font | Choose Inter or the system font. A font set in Paseo takes priority when Use Paseo fonts is on. |
-| Appearance | Code glyphs | Use Iosevka with ligatures, or show each symbol separately. A code font set in Paseo takes priority when Use Paseo fonts is on. |
+| Appearance | Code font | Use Iosevka with ligatures, Iosevka with each symbol separate, or any installed font family. A custom font takes priority over Paseo's; otherwise a code font set in Paseo takes priority when Use Paseo fonts is on. |
 | Appearance | Line spacing | Keep the original spacing with Compact. Balanced adds 15% and Spacious adds 30%. |
 | Appearance | Frosted glass | Blur card backgrounds where supported, or use solid surfaces. |
 | Appearance | Pointer glow | Show a light under the pointer on cards on desktop and web. Reduced motion disables this effect. |
@@ -224,7 +224,7 @@ The live preview uses the real prompt, reasoning, tool, reply, and checklist com
 It appears beside the settings at widths of 860 px or more, and above them on narrower screens.
 On desktop and web, the page uses the scroll pane width, up to 1200 px, with a sticky preview column.
 
-**Use Paseo fonts reads unsupported, private host state.** It reads `uiFontFamily` and `monoFontFamily`
+**Use Paseo fonts reads unsupported, private host state.** It reads `uiFontFamily`, `monoFontFamily` and `codeFontSize`
 from the `@paseo:app-settings` record in `localStorage`. The plugin SDK does not expose these settings
 in 0.8 or 0.15. A host change can break this feature without warning. It has no effect on native,
 which has no `localStorage`.

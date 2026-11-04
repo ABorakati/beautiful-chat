@@ -10,7 +10,12 @@ export const ACCENT_PRESETS = {
 
 export type AccentPreset = keyof typeof ACCENT_PRESETS;
 export type UiFontPreference = "inter" | "system";
-export type CodeFontPreference = "code" | "plain";
+/**
+ * `code` and `plain` are the embedded Iosevka with and without ligatures, and
+ * `custom` uses `customCodeFont`. Paseo's own code font is followed through
+ * `hostFonts` instead.
+ */
+export type CodeFontPreference = "code" | "plain" | "custom";
 export type MarkdownVariantPreference = "document" | "compact" | "terminal";
 export type LineSpacingPreference = "compact" | "balanced" | "spacious";
 
@@ -34,6 +39,8 @@ export interface EnhancerPreferences {
   accent: AccentPreset;
   uiFont: UiFontPreference;
   codeFont: CodeFontPreference;
+  /** A CSS font-family, read only when `codeFont` is `custom`. */
+  customCodeFont: string;
   frostedGlass: boolean;
   /** Uses Paseo's interface and code fonts on web and desktop. */
   hostFonts: boolean;
@@ -97,6 +104,7 @@ export const DEFAULT_PREFERENCES: Readonly<EnhancerPreferences> = {
   accent: "host",
   uiFont: "inter",
   codeFont: "code",
+  customCodeFont: "",
   frostedGlass: true,
   hostFonts: false,
   lineSpacing: "compact",
@@ -145,6 +153,10 @@ function collapseToolsFrom(value: unknown): CollapsibleToolGroup[] {
   return COLLAPSIBLE_TOOL_GROUPS.filter((group) => value.includes(group));
 }
 
+function isCodeFontPreference(value: unknown): value is CodeFontPreference {
+  return value === "code" || value === "plain" || value === "custom";
+}
+
 function loadPreferences(): EnhancerPreferences {
   try {
     const stored = storage()?.getItem(STORAGE_KEY);
@@ -153,7 +165,13 @@ function loadPreferences(): EnhancerPreferences {
     return {
       accent: isAccentPreset(candidate.accent) ? candidate.accent : DEFAULT_PREFERENCES.accent,
       uiFont: candidate.uiFont === "system" ? "system" : DEFAULT_PREFERENCES.uiFont,
-      codeFont: candidate.codeFont === "plain" ? "plain" : DEFAULT_PREFERENCES.codeFont,
+      codeFont: isCodeFontPreference(candidate.codeFont)
+        ? candidate.codeFont
+        : DEFAULT_PREFERENCES.codeFont,
+      customCodeFont:
+        typeof candidate.customCodeFont === "string"
+          ? candidate.customCodeFont
+          : DEFAULT_PREFERENCES.customCodeFont,
       hostFonts:
         typeof candidate.hostFonts === "boolean" ? candidate.hostFonts : DEFAULT_PREFERENCES.hostFonts,
       lineSpacing:

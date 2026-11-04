@@ -60,7 +60,7 @@ export function ImagePreview({ path, file, tokens, onReveal }: ImagePreviewProps
         },
         path: {
           fontFamily: tokens.fontMono,
-          fontSize: 11.5,
+          fontSize: tokens.codeFontSize,
           color: tokens.accent,
           textDecorationLine: "underline",
           flexShrink: 1,
@@ -68,7 +68,7 @@ export function ImagePreview({ path, file, tokens, onReveal }: ImagePreviewProps
         },
         plainPath: {
           fontFamily: tokens.fontMono,
-          fontSize: 11.5,
+          fontSize: tokens.codeFontSize,
           color: tokens.foregroundMuted,
           flexShrink: 1,
           minWidth: 0,

@@ -4,7 +4,7 @@ import { useAgent, usePaseo, useRpc } from "@getpaseo/plugin/client";
 import { useRevealedText } from "@getpaseo/plugin/client/react-native";
 import type { PluginTimelineItemProps } from "@getpaseo/plugin/client";
 import type { PluginTheme } from "@getpaseo/plugin";
-import { buildThemeTokens } from "./components/theme-tokens";
+import { useThemeTokens } from "./components/theme-tokens";
 import { ToolCallout } from "./components/tool-callouts";
 import { toolCardStartsExpanded } from "./tool-collapse";
 import { ReasoningTrace } from "./components/reasoning-trace";
@@ -63,10 +63,7 @@ export function LiveToolCallRenderer({
   const revealPath = useRpc(revealPathRpc);
   const cwd = useAgent(agentId, (agent) => agent.cwd);
   const preferences = useEnhancerPreferences();
-  const tokens = useMemo(
-    () => buildThemeTokens(theme.colors, preferences),
-    [theme.colors, preferences],
-  );
+  const tokens = useThemeTokens(theme.colors, preferences);
   useSelectionActions(tokens, preferences.selectionActions);
   usePointerGlow(preferences.pointerGlow);
   useFrostedGlass(preferences.frostedGlass);
@@ -167,10 +164,7 @@ export function LiveReasoningRenderer({
   timestamp,
 }: PluginTimelineItemProps<LiveReasoningPayload>) {
   const preferences = useEnhancerPreferences();
-  const tokens = useMemo(
-    () => buildThemeTokens(theme.colors, preferences),
-    [theme.colors, preferences],
-  );
+  const tokens = useThemeTokens(theme.colors, preferences);
   useSelectionActions(tokens, preferences.selectionActions);
   usePointerGlow(preferences.pointerGlow);
   useFrostedGlass(preferences.frostedGlass);
@@ -249,10 +243,7 @@ export function LiveTodoRenderer({
   theme,
 }: PluginTimelineItemProps<LiveTodoPayload>) {
   const preferences = useEnhancerPreferences();
-  const tokens = useMemo(
-    () => buildThemeTokens(theme.colors, preferences),
-    [theme.colors, preferences],
-  );
+  const tokens = useThemeTokens(theme.colors, preferences);
   useSelectionActions(tokens, preferences.selectionActions);
   usePointerGlow(preferences.pointerGlow);
   useFrostedGlass(preferences.frostedGlass);
@@ -289,10 +280,7 @@ export function LiveAssistantRenderer({
   timestamp,
 }: PluginTimelineItemProps<LiveAssistantPayload>) {
   const preferences = useEnhancerPreferences();
-  const tokens = useMemo(
-    () => buildThemeTokens(theme.colors, preferences),
-    [theme.colors, preferences],
-  );
+  const tokens = useThemeTokens(theme.colors, preferences);
   useSelectionActions(tokens, preferences.selectionActions);
   usePointerGlow(preferences.pointerGlow);
   useFrostedGlass(preferences.frostedGlass);
@@ -346,10 +334,7 @@ export function LiveAssistantRenderer({
  */
 export function LiveNoticeRenderer({ item, theme }: PluginTimelineItemProps<LiveNoticePayload>) {
   const preferences = useEnhancerPreferences();
-  const tokens = useMemo(
-    () => buildThemeTokens(theme.colors, preferences),
-    [theme.colors, preferences],
-  );
+  const tokens = useThemeTokens(theme.colors, preferences);
   useSelectionActions(tokens, preferences.selectionActions);
   usePointerGlow(preferences.pointerGlow);
   useFrostedGlass(preferences.frostedGlass);
@@ -395,10 +380,7 @@ export function LiveUserMessageRenderer({
   timestamp,
 }: PluginTimelineItemProps<LiveUserMessagePayload>) {
   const preferences = useEnhancerPreferences();
-  const tokens = useMemo(
-    () => buildThemeTokens(theme.colors, preferences),
-    [theme.colors, preferences],
-  );
+  const tokens = useThemeTokens(theme.colors, preferences);
   useSelectionActions(tokens, preferences.selectionActions);
   usePointerGlow(preferences.pointerGlow);
   useFrostedGlass(preferences.frostedGlass);
