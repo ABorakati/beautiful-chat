@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useMemo } from "react";
 import { View, Text, Pressable, StyleSheet } from "react-native";
+import type { ViewProps } from "react-native";
 import { Glyph } from "./glyph";
 import { frosted } from "./frosted";
 import { surfaceProps } from "./view-props";
@@ -18,6 +19,7 @@ interface SyntaxHighlightProps {
   tokens: ExtendedThemeTokens;
   showLineNumbers?: boolean;
   filename?: string;
+  filePath?: string;
   compact?: boolean;
   /** Shows the file in the machine's own file manager. Omitted: plain label. */
   onRevealFile?: () => void;
@@ -476,6 +478,7 @@ export function SyntaxHighlightBlock({
   tokens,
   showLineNumbers = false,
   filename,
+  filePath = filename,
   compact = false,
   onRevealFile,
   foldAfterLines = 0,
@@ -671,6 +674,7 @@ export function SyntaxHighlightBlock({
             {filename ? (
               onRevealFile ? (
                 <Pressable
+                  {...({ dataSet: { bcpath: filePath } } as ViewProps)}
                   onPress={onRevealFile}
                   accessibilityRole="link"
                   accessibilityLabel={`Show ${filename} in the file manager`}

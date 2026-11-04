@@ -125,6 +125,19 @@ A collapsible trace with a connected step rail, per-step duration, and a token t
 
 Phase name, per-task status, durations, and a blocked task with its reason.
 
+Live checklist is on by default. The plugin hides a checklist only when its agent feed identifies a newer update.
+Cards stay visible while the feed is not ready, scans history, finds no matching list, or reports an error.
+The plugin retries failed feeds after 500 ms and doubles the delay to a 10-second maximum.
+The 0.15 SDK exposes no row ID or sequence number to todo renderers. Host timestamps do not identify todo updates.
+The plugin compares task content instead. Unknown content stays visible.
+The transformer removes older content when no observed agent needs it as its newest checklist.
+This removes the empty host wrapper for those older updates. Refreshes occur at most once per frame (16 ms).
+If another agent still needs the same content, the renderer hides only its agent's older card. A host wrapper can remain.
+An unanswered feed prevents transformer suppression. A complete empty history does not block other agents.
+Identical updates of the newest list stay visible because the SDK cannot distinguish them.
+The plugin removes cached feed data after the last row for that agent unmounts.
+Turn the setting off to show each update.
+
 ![Checklist](docs/images/tasks.png)
 
 ### Approval card
@@ -174,7 +187,9 @@ Devicon brand marks, and the file-manager link.
 | Timeline | Fold reasoning summaries | Fold summaries after completion. Disable this setting to keep every summary open. |
 | Timeline | Let Paseo fold tool calls | Off by default. On desktop and web, let Paseo draw calls when its display setting folds them. |
 | Timeline | Show reasoning between folded calls | On by default. Keep reasoning visible while Paseo folds tool calls. |
+| Timeline | Live checklist | On by default. Hide older updates when the agent feed identifies a newer checklist. Keep cards visible while the feed is unavailable. Disable this setting to show every update. |
 | Interaction | Selection actions | Select text to show Copy and Add to chat on desktop and web. Add to chat inserts a quote or code block. |
+| Interaction | Ask before opening files | On by default. Ask before a safe file opens inside the working folder. Other files and paths always ask. |
 
 The live preview uses the real prompt, reasoning, tool, reply, and checklist components with sample data.
 It appears beside the settings at widths of 860 px or more, and above them on narrower screens.
@@ -226,17 +241,77 @@ match inside one of them.
 
 ## Opening files
 
-A file name in a read, write, edit, or code block is a link. Pressing it calls the plugin's own
-daemon-side RPC (`file.reveal`), which resolves the path against the agent's working directory and
-asks the platform shell to show it:
+A file name in a read, write, edit, or code block is a link.
+Press it to show the path in the file manager.
+The path menu sends the agent ID and working folder when the renderer supplies them.
+The daemon reads the agent's current working folder through the Paseo SDK.
 
-| Platform | Behaviour                                              |
-| -------- | ------------------------------------------------------ |
-| Windows  | `explorer.exe /select,<file>` selects the file.        |
-| macOS    | `open -R <file>` selects the file in Finder.           |
-| Other    | `xdg-open <directory>` opens the containing directory. |
+| Platform | Show in File Manager                                  | Open in Default App          |
+| -------- | ----------------------------------------------------- | ---------------------------- |
+| Windows  | `explorer.exe /select,"<path>"` selects the path.     | `explorer.exe "<path>"`       |
+| macOS    | `open -R <path>` selects the path in Finder.           | `open <path>`                |
+| Other    | `xdg-open <directory>` opens the parent directory.     | `xdg-open <path>`            |
 
-A directory path opens that directory. A path the daemon cannot stat does nothing.
+Reveal always selects the target on Windows and opens its parent directory on Linux, including directory targets.
+All actions run on the computer that runs the Paseo daemon, not on the client.
+macOS always reveals the path with `open -R`, including an app bundle.
+**Show in File Manager** cannot launch that bundle and needs no confirmation.
+
+On desktop and web, right-click a path link or inline code that contains an absolute path.
+The menu offers **Copy Selection** when text is selected, **Copy Path**, **Open in Default App**, and **Show in File Manager**.
+A relative path offers open and reveal actions only when the renderer supplies the agent's working folder.
+A missing path or a launch error shows a message for five seconds.
+
+**Open in Default App** first asks the daemon to inspect the path without a launch.
+The daemon uses `realpath` and checks the resolved target, not a symlink name.
+The dialog shows that target and says which computer opens it.
+**Cancel** has focus. Press Escape or **Cancel** to cancel the launch.
+Only **Open** in a dialog without a checkbox sends `confirmed: true`.
+The ordinary dialog and the safe-file bypass send no confirmation flag.
+The daemon repeats the policy check before each launch, including direct RPC calls.
+An open uses the exact resolved path without another selector removal.
+The daemon rejects a confirmed path if the final check resolves it to a different target.
+On macOS, `open` and LaunchServices resolve the path again after that check.
+A file or handler change in that interval can still change what opens.
+
+Only these ASCII file extensions can open without the code warning. Letter case does not matter:
+
+- Images: `png`, `jpg`, `jpeg`, `gif`, `webp`, `avif`, `bmp`, `ico`, `tif`, `tiff`, `heic`, `heif`.
+- Text and data: `txt`, `text`, `md`, `markdown`, `rst`, `log`, `csv`, `tsv`, `json`, `jsonl`, `ndjson`, `yaml`, `yml`, `toml`, `ini`.
+- Documents: `pdf`.
+- Audio: `mp3`, `wav`, `ogg`, `oga`, `flac`, `aac`, `m4a`, `opus`, `aif`, `aiff`, `wma`.
+- Video: `mp4`, `webm`, `mkv`, `mov`, `m4v`, `avi`, `mpg`, `mpeg`, `ogv`, `3gp`, `wmv`.
+
+The client and daemon use the same allowlist in `shared/path-open-policy.ts`.
+Every other extension, a path without an extension, and a directory require confirmation.
+Any Unix executable permission bit requires confirmation, even when the file has an allowlisted extension.
+The extension check keeps trailing dots and spaces and rejects non-ASCII extension characters.
+On macOS, `com.apple.LaunchServices.OpenWith` and `com.apple.FinderInfo` attributes require confirmation.
+FinderInfo can mark a Finder alias. The daemon treats every FinderInfo attribute as risky, even without the alias flag.
+If the daemon cannot read the macOS attributes, it rejects the open.
+A safe extension does not prove that file contents or the default app are safe.
+Only open files that you trust.
+
+A target outside the agent's resolved working folder always requires confirmation.
+The dialog flags it as **outside the working folder** and has no **Don't ask again** checkbox.
+Risky types also have no checkbox.
+If the daemon cannot read the agent's working folder, every open requires confirmation.
+The client-supplied folder can resolve a relative path but cannot bypass this rule.
+
+For safe files inside the working folder, select **Don't ask again**, then press **Open**, to skip later questions.
+Turn on **Ask before opening files** in the plugin settings to restore the question.
+This setting defaults to on.
+Path normalization keeps UNC and Windows namespace prefixes (`\\server\share`, `//server/share`, `\\.\`, `\\?\`, `//./`, and `//?/`).
+An inspection of a UNC path can send network credentials before the confirmation dialog appears.
+
+The macOS launcher reports a nonzero exit, a signal, or a three-second timeout as an error.
+The Linux launcher reports an early failure but reports only `started` at three seconds because `xdg-open` can wait for its app.
+Explorer can report a nonzero exit after success, so its RPC result reports only `started`, not completed.
+Explorer spawn errors reach the client.
+Actual macOS and Linux launchers remain untested.
+
+Web links with `http`, `https`, or `mailto` use real anchors in replies.
+The host can offer link-address actions. A normal press still uses Paseo's external opener.
 
 ## Unmapped output
 

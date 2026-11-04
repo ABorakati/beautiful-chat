@@ -22,7 +22,8 @@ interface DesktopOpener {
   opener?: { openUrl?: (url: string) => unknown };
 }
 
-function allowed(url: string): boolean {
+/** Use the same scheme check for the opener and web anchors. */
+export function isAllowedLink(url: string): boolean {
   try {
     return ALLOWED.has(new URL(url).protocol);
   } catch {
@@ -31,7 +32,7 @@ function allowed(url: string): boolean {
 }
 
 export function openLink(url: string): void {
-  if (!allowed(url)) return;
+  if (!isAllowedLink(url)) return;
 
   if (Platform.OS === "web") {
     const bridge = (globalThis as { paseoDesktop?: DesktopOpener }).paseoDesktop;

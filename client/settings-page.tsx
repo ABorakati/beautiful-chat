@@ -581,6 +581,13 @@ export function BeautifulChatSettingsPage({ theme }: PluginSurfaceProps) {
               onChange={(collapseReasoning) => updateEnhancerPreferences({ collapseReasoning })}
               tokens={tokens}
             />
+            <ToggleRow
+              title="Live checklist"
+              description="Show only checklist updates that the feed identifies as current. Keep cards visible while the feed is unavailable. Disable this setting to show every update."
+              value={preferences.liveChecklist}
+              onChange={(liveChecklist) => updateEnhancerPreferences({ liveChecklist })}
+              tokens={tokens}
+            />
           </Section>
 
           <Section title="Interaction" tokens={tokens}>
@@ -590,6 +597,14 @@ export function BeautifulChatSettingsPage({ theme }: PluginSurfaceProps) {
               chip="Desktop & web"
               value={preferences.selectionActions}
               onChange={(selectionActions) => updateEnhancerPreferences({ selectionActions })}
+              tokens={tokens}
+            />
+            <ToggleRow
+              title="Ask before opening files"
+              description="Ask before a safe file opens on the computer that runs the Paseo daemon. Other files and paths outside the working folder always ask."
+              chip="Desktop & web"
+              value={preferences.confirmOpenPath}
+              onChange={(confirmOpenPath) => updateEnhancerPreferences({ confirmOpenPath })}
               tokens={tokens}
             />
           </Section>

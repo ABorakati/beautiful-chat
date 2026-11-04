@@ -7,9 +7,15 @@ import { installShimmer } from "./client/components/shimmer";
 import { installPointerGlow } from "./client/components/glow";
 import { installHostNoticeStyle } from "./client/components/host-notice";
 import { installChatFind } from "./client/components/chat-find";
+import { installPathLinkMenu } from "./client/components/path-link-menu";
 import { extractPromptImages } from "./client/prompt-images";
 import { getEnhancerPreferences, subscribeEnhancerPreferences } from "./client/preferences";
 import { hostFoldsToolCalls, observeHostToolFolding } from "./client/host-settings";
+import {
+  checklistKey,
+  isSupersededChecklist,
+  subscribeSupersededChecklist,
+} from "./client/components/checklist-live";
 import {
   LiveToolCallRenderer,
   LiveReasoningRenderer,
@@ -36,6 +42,8 @@ export default function contribute(client: PluginClientContext) {
   const removeNoticeStyle = installHostNoticeStyle();
   // Paseo's Ctrl+F cannot reveal rows this plugin draws; this bar can.
   const removeChatFind = installChatFind();
+  // Add copy, open, and reveal actions to path targets.
+  const removePathLinkMenu = installPathLinkMenu(client);
 
   // Configuration lives in the host Settings area. The plugin has no showcase
   // surface, panels, or Command Center item.
@@ -148,25 +156,48 @@ export default function contribute(client: PluginClientContext) {
     Component: LiveReasoningRenderer,
   });
 
-  const removeTodoTransformer = client.addTimelineTransformer({
+  // Transformers have no agent context. Suppress only content that no observed agent needs as its newest list.
+  const registerTodoTransformer = () => client.addTimelineTransformer({
     id: "omp-enhanced-todo",
     query: { itemType: "todo" },
-    transform({ item, phase }) {
+    transform({ item }) {
       if (item.type !== "todo") return undefined;
+      const key = checklistKey(item.items);
+      if (getEnhancerPreferences().liveChecklist && isSupersededChecklist(key)) return { items: [] };
       return {
         items: [
           {
             type: "plugin" as const,
             kind: "omp-todo",
             version: 1,
-            data: {
-              items: toJsonValue(item.items),
-              phase,
-            },
+            data: { items: toJsonValue(item.items), key },
           },
         ],
       };
     },
+  });
+  let removeTodoTransformer = registerTodoTransformer();
+  let todoRefresh: NodeJS.Timeout | undefined;
+  const refreshTodoTransformer = () => {
+    removeTodoTransformer();
+    removeTodoTransformer = registerTodoTransformer();
+  };
+  // Refresh at most once per frame. A timer, not a frame callback, also runs in a hidden window.
+  const stopSupersededWatch = subscribeSupersededChecklist(() => {
+    if (todoRefresh !== undefined || !getEnhancerPreferences().liveChecklist) return;
+    todoRefresh = setTimeout(() => {
+      todoRefresh = undefined;
+      refreshTodoTransformer();
+    }, 16);
+  });
+  let liveChecklist = getEnhancerPreferences().liveChecklist;
+  const stopChecklistWatch = subscribeEnhancerPreferences(() => {
+    const next = getEnhancerPreferences().liveChecklist;
+    if (next === liveChecklist) return;
+    liveChecklist = next;
+    clearTimeout(todoRefresh);
+    todoRefresh = undefined;
+    refreshTodoTransformer();
   });
 
   const removeTodoRenderer = client.addTimelineRenderer({
@@ -174,7 +205,7 @@ export default function contribute(client: PluginClientContext) {
     version: 1,
     schema: z.object({
       items: z.array(z.record(z.string(), z.unknown())),
-      phase: z.string().optional(),
+      key: z.string(),
     }),
     Component: LiveTodoRenderer,
   });
@@ -299,10 +330,14 @@ export default function contribute(client: PluginClientContext) {
     removeGlow();
     removeNoticeStyle();
     removeChatFind();
+    removePathLinkMenu();
     removeToolTransformer();
     removeToolRenderer();
     removeReasoningTransformer();
     removeReasoningRenderer();
+    stopSupersededWatch();
+    stopChecklistWatch();
+    clearTimeout(todoRefresh);
     removeTodoTransformer();
     removeTodoRenderer();
     removeUserTransformer();

@@ -1,36 +1,30 @@
 import { useCallback, useSyncExternalStore } from "react";
 
 /**
- * Which plugin timeline item is currently last.
+ * The newest plugin item for each agent.
  *
- * A running-jobs card belongs under the newest thing on screen, and a plugin
- * renderer knows only its own item — the host hands it no position. So each
- * item reports the moment it was first projected, and the highest moment wins.
- * Projection is cached per source item, so that moment is the item's arrival
- * time and does not move when the list re-renders or a row scrolls back in.
+ * The host gives a renderer no row position. Each item reports its timestamp,
+ * and the newest item owns the tail. Separate tails keep cards in each chat.
  */
 interface Tail {
   key: string;
   at: number;
 }
 
-let tail: Tail | null = null;
+const tails = new Map<string, Tail>();
 const listeners = new Set<() => void>();
 
 function publish(): void {
   for (const listener of listeners) listener();
 }
 
-/** Records an item's arrival. A later arrival takes the tail; ties keep the incumbent. */
-export function noteTimelineItem(key: string, at: number): void {
+/** Records an arrival. A later arrival owns the tail. Ties keep the current item. */
+export function noteTimelineItem(agentId: string, key: string, at: number): void {
+  const tail = tails.get(agentId);
   if (tail && (at < tail.at || (at === tail.at && key !== tail.key))) return;
   if (tail && tail.key === key && tail.at === at) return;
-  tail = { key, at };
+  tails.set(agentId, { key, at });
   publish();
-}
-
-export function getTimelineTail(): string | null {
-  return tail?.key ?? null;
 }
 
 function subscribe(listener: () => void): () => void {
@@ -40,8 +34,8 @@ function subscribe(listener: () => void): () => void {
   };
 }
 
-/** True while this item is the newest one the plugin has drawn. */
-export function useIsTimelineTail(key: string): boolean {
-  const getSnapshot = useCallback(() => tail?.key === key, [key]);
+/** True while this item is the newest plugin item for `agentId`. */
+export function useIsTimelineTail(agentId: string, key: string): boolean {
+  const getSnapshot = useCallback(() => tails.get(agentId)?.key === key, [agentId, key]);
   return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 }

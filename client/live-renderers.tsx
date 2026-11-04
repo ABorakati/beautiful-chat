@@ -12,6 +12,7 @@ import { ReasoningTrace } from "./components/reasoning-trace";
 import { TaskList } from "./components/task-list";
 import { UserMessage } from "./components/user-message";
 import { hostFontEscape } from "./components/host-font-escape";
+import { pathContextProps } from "./components/path-link-menu";
 import { promptRowAnchor } from "./components/prompt-anchor";
 import { surfaceProps } from "./components/view-props";
 import { useSelectionActions } from "./components/selection-actions";
@@ -24,6 +25,7 @@ import { buildHubData } from "./hub-details";
 import { publishHubSnapshot } from "./hub-activity";
 import { MarkdownView } from "./components/markdown/markdown-view";
 import { TimelineTailHub } from "./components/hub-live";
+import { ChecklistFeed, toTaskListData, useChecklistRowVisible } from "./components/checklist-live";
 import { AssistantFooter } from "./components/turn-footer";
 import { SystemCard } from "./components/system-card";
 import { parseSystemEnvelope } from "./system-envelope";
@@ -32,8 +34,6 @@ import type {
   ToolCalloutData,
   ToolCallKind,
   ReasoningTraceData,
-  TaskListData,
-  TaskItemData,
   EvalCell,
   HubData,
   McpToolData,
@@ -67,7 +67,7 @@ export interface LiveReasoningPayload {
 
 export interface LiveTodoPayload {
   items: Array<Record<string, unknown>>;
-  phase?: string;
+  key: string;
 }
 
 export interface LiveNoticePayload {
@@ -699,7 +699,7 @@ export function LiveToolCallRenderer({
   );
 
   return (
-    <View {...hostFontEscape}>
+    <View {...surfaceProps(hostFontEscape, pathContextProps(agentId, cwd) ?? {})}>
       <ToolCallout
         data={calloutData}
         tokens={tokens}
@@ -707,6 +707,7 @@ export function LiveToolCallRenderer({
         onRevealPath={handleRevealPath}
         imageFile={imageFile}
       />
+      <ChecklistFeed agentId={agentId} />
       <TimelineTailHub
         agentId={agentId}
         tokens={tokens}
@@ -719,8 +720,10 @@ export function LiveToolCallRenderer({
 }
 
 export function LiveReasoningRenderer({
+  agentId,
   item,
   theme,
+  timestamp,
 }: PluginTimelineItemProps<LiveReasoningPayload>) {
   const preferences = useEnhancerPreferences();
   const tokens = useMemo(
@@ -777,6 +780,8 @@ export function LiveReasoningRenderer({
     };
   }, [data, revealed]);
 
+  const itemKey = `reasoning:${timestamp.getTime()}`;
+
   return (
     <View {...hostFontEscape}>
       <ReasoningTrace
@@ -784,11 +789,24 @@ export function LiveReasoningRenderer({
         tokens={tokens}
         defaultExpanded={data.phase === "streaming" || !preferences.collapseReasoning}
       />
+      <ChecklistFeed agentId={agentId} />
+      <TimelineTailHub
+        agentId={agentId}
+        tokens={tokens}
+        itemKey={itemKey}
+        at={timestamp.getTime()}
+        kind="tool"
+      />
     </View>
   );
 }
 
-export function LiveTodoRenderer({ item, theme }: PluginTimelineItemProps<LiveTodoPayload>) {
+/** Keeps cards visible unless the feed identifies a newer checklist for this agent. */
+export function LiveTodoRenderer({
+  agentId,
+  item,
+  theme,
+}: PluginTimelineItemProps<LiveTodoPayload>) {
   const preferences = useEnhancerPreferences();
   const tokens = useMemo(
     () => buildThemeTokens(theme.colors, preferences),
@@ -797,27 +815,13 @@ export function LiveTodoRenderer({ item, theme }: PluginTimelineItemProps<LiveTo
   useSelectionActions(tokens, preferences.selectionActions);
   usePointerGlow(preferences.pointerGlow);
   useFrostedGlass(preferences.frostedGlass);
-  const data = item.data;
-
-  const taskListData: TaskListData = useMemo(() => {
-    const tasks: TaskItemData[] = (data.items || []).map((task, idx) => ({
-      id: typeof task.id === "string" ? task.id : `todo-${idx}`,
-      title: typeof task.text === "string" ? task.text : "Untitled task",
-      phase: "Execution",
-      status:
-        task.completed === true
-          ? "completed"
-          : task.status === "in_progress"
-            ? "in_progress"
-            : "pending",
-    }));
-
-    return {
-      id: "live-todo",
-      phaseName: "Checklist Progress",
-      tasks,
-    };
-  }, [data]);
+  const taskListData = useMemo(() => toTaskListData(item.data.items), [item.data.items]);
+  const visible = useChecklistRowVisible(
+    agentId,
+    item.data.key,
+    preferences.liveChecklist,
+  );
+  if (!visible) return null;
 
   return (
     <View {...hostFontEscape}>
@@ -858,7 +862,7 @@ export function LiveAssistantRenderer({
   // off an `assistant_message` item that no longer exists. Rebuild it where the
   // host puts it: under the newest message, once, not under every reply.
   const itemKey = `assistant:${timestamp.getTime()}`;
-  const isTail = useIsTimelineTail(itemKey);
+  const isTail = useIsTimelineTail(agentId, itemKey);
 
   // Job results, IRC relays and reminders arrive as replies because the host
   // files any unclaimed `custom` message under this item kind. They are not
@@ -866,7 +870,7 @@ export function LiveAssistantRenderer({
   const envelope = useMemo(() => parseSystemEnvelope(item.data.text), [item.data.text]);
 
   return (
-    <View {...hostFontEscape}>
+    <View {...surfaceProps(hostFontEscape, pathContextProps(agentId, cwd) ?? {})}>
       {envelope ? (
         <SystemCard envelope={envelope} tokens={tokens} />
       ) : (
@@ -881,6 +885,7 @@ export function LiveAssistantRenderer({
       {isTail && !envelope ? (
         <AssistantFooter text={item.data.text} at={timestamp} tokens={tokens} />
       ) : null}
+      <ChecklistFeed agentId={agentId} />
       <TimelineTailHub
         agentId={agentId}
         tokens={tokens}
@@ -1011,6 +1016,14 @@ export function LiveUserMessageRenderer({
           foldAfterLines={preferences.promptFoldLimit}
         />
       )}
+      <ChecklistFeed agentId={agentId} />
+      <TimelineTailHub
+        agentId={agentId}
+        tokens={tokens}
+        itemKey={`prompt:${timestamp.getTime()}`}
+        at={timestamp.getTime()}
+        kind="tool"
+      />
     </View>
   );
 }
