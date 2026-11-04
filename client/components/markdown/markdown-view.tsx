@@ -6,7 +6,7 @@ import { radius, withAlpha, type ExtendedThemeTokens } from "../theme-tokens";
 import { selectableSurface, unselectable } from "../selection";
 import { selectionSurface } from "../selection-actions";
 import { SyntaxHighlightBlock } from "../syntax-highlight";
-import { isAllowedLink, openLink } from "../open-link";
+import { isAllowedLink, localPathFromHref, openLink } from "../open-link";
 import { pathTargetProps } from "../path-link-menu";
 import {
   parseMarkdown,
@@ -39,9 +39,10 @@ export interface MarkdownViewProps {
    */
   marks?: boolean;
   /**
-   * Shows a local path the reply mentions in the file manager. Undefined
-   * leaves every path as text. Opening a file goes through the path menu,
-   * which asks first.
+   * A press on a local path the reply mentions or links to. The renderer's
+   * handler shows it in the file manager on web and offers path actions on
+   * native (`usePathPress`). Undefined leaves every path as text. Opening a
+   * file goes through the path menu, which asks first.
    */
   onRevealFile?: (path: string) => void;
 }
@@ -546,6 +547,32 @@ function pathMarkProps(path: string): TextProps | null {
   return Platform.OS === "web" ? ({ dataSet: { bcpath: path } } as unknown as TextProps) : null;
 }
 
+/**
+ * A pressable local path. Path spans, inline-code paths and markdown links to
+ * local files all draw through here, so they share one press behaviour.
+ */
+function pathLink(
+  key: string,
+  path: string,
+  children: React.ReactNode,
+  style: TextProps["style"],
+  onRevealFile: (path: string) => void,
+): React.ReactNode {
+  return (
+    <Text
+      key={key}
+      selectable
+      accessibilityRole="link"
+      accessibilityLabel={Platform.OS === "web" ? `Show ${path} in the file manager` : `Path actions for ${path}`}
+      onPress={() => onRevealFile(path)}
+      style={style}
+      {...pathMarkProps(path)}
+    >
+      {children}
+    </Text>
+  );
+}
+
 function renderInline(
   spans: MdInline[],
   styles: MarkdownStyles,
@@ -561,20 +588,8 @@ function renderInline(
         // The host draws an inline-code path as a link too, so a path the
         // author wrapped in backticks keeps the same affordance here.
         const codePath = onRevealFile ? isFilePathToken(span.text) : null;
-        if (codePath !== null) {
-          return (
-            <Text
-              key={key}
-              selectable
-              accessibilityRole="link"
-              accessibilityLabel={`Show ${codePath} in the file manager`}
-              onPress={() => onRevealFile?.(codePath)}
-              style={[styles.codeSpan, styles.link]}
-              {...pathMarkProps(codePath)}
-            >
-              {span.text}
-            </Text>
-          );
+        if (codePath !== null && onRevealFile) {
+          return pathLink(key, codePath, span.text, [styles.codeSpan, styles.link], onRevealFile);
         }
         return (
           <Text key={key} selectable style={styles.codeSpan} {...pathTargetProps(span.text)}>
@@ -584,19 +599,7 @@ function renderInline(
       }
       case "filePath":
         if (!onRevealFile) return span.path;
-        return (
-          <Text
-            key={key}
-            selectable
-            accessibilityRole="link"
-            accessibilityLabel={`Show ${span.path} in the file manager`}
-            onPress={() => onRevealFile(span.path)}
-            style={styles.link}
-            {...pathMarkProps(span.path)}
-          >
-            {span.path}
-          </Text>
-        );
+        return pathLink(key, span.path, span.path, styles.link, onRevealFile);
       case "strong":
         return (
           <Text key={key} selectable style={styles.strong}>
@@ -631,6 +634,11 @@ function renderInline(
           </Text>
         );
       case "link": {
+        // A link to a local file presses like a path the reply mentions.
+        const linkPath = onRevealFile ? localPathFromHref(span.href) : null;
+        if (linkPath !== null && onRevealFile) {
+          return pathLink(key, linkPath, renderInline(span.spans, styles, key, onRevealFile), styles.link, onRevealFile);
+        }
         // A Text keeps the link inside the paragraph's selection range.
         // Safe web anchors let Paseo offer Copy Link Address.
         // Other targets carry a path mark, not an href that can navigate.

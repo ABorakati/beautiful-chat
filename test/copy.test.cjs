@@ -9,7 +9,7 @@ const ts = require("typescript");
 // Run the actual components/handlers, with native primitives and hooks supplied
 // by a tiny host. No navigator exists: a native copy must go through the SDK.
 function harness(file, name, copyText, platform = "ios", scale = 1) {
-  const state = [], timers = new Map(), cleanups = [], calls = [], toasts = [];
+  const state = [], timers = new Map(), cleanups = [], calls = [], toasts = [], opened = [];
   let cursor = 0, timerId = 0;
   const react = {
     useState(initial) {
@@ -40,9 +40,10 @@ function harness(file, name, copyText, platform = "ios", scale = 1) {
     const localRequire = id => {
       if (id === "react") return react;
       if (id === "react/jsx-runtime") return { jsx: (type, props) => ({ type, props }), jsxs: (type, props) => ({ type, props }), Fragment: "Fragment" };
-      if (id === "react-native") return { View: "View", Text: "Text", ScrollView: "ScrollView", Pressable: "Pressable", Image: "Image", Platform: { OS: platform }, StyleSheet: { create: x => x } };
+      if (id === "react-native") return { View: "View", Text: "Text", ScrollView: "ScrollView", Pressable: "Pressable", Image: "Image", Platform: { OS: platform }, StyleSheet: { create: x => x }, Linking: { openURL: url => { opened.push(url); return Promise.resolve(); } } };
       if (id === "@getpaseo/plugin/client/ui") return sdk;
-      if (id === "./copy-feedback") return load(resolve(dirname(filename), id + ".tsx"));
+      if (id === "./copy-feedback" || id === "./path-actions") return load(resolve(dirname(filename), id + ".tsx"));
+      if (id === "./open-link" || id === "../open-link") return load(resolve(dirname(filename), id + ".ts"));
       if (id === "./theme-tokens" || id === "../theme-tokens") return { radius: {}, withAlpha: value => value };
       if (id === "./parse") return load(resolve(dirname(filename), "parse.ts"));
       if (id === "../highlight") return { useHighlightedLines: () => null };
@@ -67,7 +68,9 @@ function harness(file, name, copyText, platform = "ios", scale = 1) {
     if (typeof tree.type === "function") return nodes(tree.type(tree.props), predicate);
     return [...(predicate(tree) ? [tree] : []), ...nodes(tree.props?.children, predicate)];
   }
-  return { render, nodes, calls, toasts, text, props, timers, cleanups };
+  // Calls a hook as one render would, for hooks with no component of their own.
+  function run(fn) { cursor = 0; return fn(); }
+  return { render, run, load, nodes, calls, toasts, opened, text, props, timers, cleanups };
 }
 
 const components = [
@@ -165,3 +168,148 @@ for (const variant of ["document", "compact", "terminal"]) {
     }
   });
 }
+
+// Local file links and paths: one press handler, never a browser or OS sink.
+test("localPathFromHref: local targets become paths, every other scheme stays out", () => {
+  const { localPathFromHref, fileUrlToPath } = harness("client/components/markdown/markdown-view.tsx", "MarkdownView", async () => {}).load("client/components/open-link.ts");
+  const cases = [
+    ["/abs/foo.ts", "/abs/foo.ts"],
+    ["src/foo.ts:12", "src/foo.ts:12"],
+    ["README.md", "README.md"],
+    ["~/notes/todo.md", "~/notes/todo.md"],
+    ["docs/My%20File.md#usage", "docs/My File.md"],
+    ["src/foo.ts#L10-L20", "src/foo.ts#L10-L20"],
+    ["C:\\work\\a.txt", "C:\\work\\a.txt"],
+    ["file:///tmp/a%20b.txt", "/tmp/a b.txt"],
+    ["file:///C:/work/a.txt", "C:/work/a.txt"],
+    ["file://server/share/a.txt", "//server/share/a.txt"],
+    ["https://example.com/a.ts", null],
+    ["mailto:a@example.com", null],
+    ["javascript:alert(1)", null],
+    ["JavaScript:alert(1)", null],
+    ["data:text/html,<b>x</b>", null],
+    ["vscode://file/a.ts", null],
+    ["//example.com/a.ts", null],
+    ["#heading", null],
+    ["", null],
+  ];
+  for (const [href, expected] of cases) assert.equal(localPathFromHref(href), expected, href);
+  assert.equal(fileUrlToPath("https://example.com"), null);
+});
+
+const linkReply = [
+  "See [foo.ts](/abs/foo.ts), [the file](file:///tmp/a%20b.txt), [line 12](src/foo.ts:12),",
+  "/abs/bar.ts, `src/baz.ts`, [web](https://example.com) and [bad](javascript:alert(1)).",
+].join("\n");
+
+for (const platform of ["ios", "android", "web"]) {
+  test(`markdown ${platform}: local links, prose paths and code paths share the press handler`, () => {
+    const pressed = [];
+    const h = harness("client/components/markdown/markdown-view.tsx", "MarkdownView", async () => {}, platform);
+    Object.assign(h.props, { variant: "document", text: linkReply, onRevealFile: path => pressed.push(path) });
+    const links = h.nodes(h.render(), n => n.type === "Text" && n.props.accessibilityRole === "link");
+    const open = globalThis.open;
+    const web = [];
+    globalThis.open = url => { web.push(url); };
+    try {
+      for (const link of links) link.props.onPress({ preventDefault() {} });
+    } finally {
+      globalThis.open = open;
+    }
+    assert.deepEqual(pressed, ["/abs/foo.ts", "/tmp/a b.txt", "src/foo.ts:12", "/abs/bar.ts", "src/baz.ts"]);
+    // Only the web link reaches an external opener; file: and javascript: never do.
+    assert.deepEqual(platform === "web" ? web : h.opened, ["https://example.com"]);
+    assert.deepEqual(platform === "web" ? h.opened : web, []);
+    const local = links.filter(n => n.props.accessibilityLabel);
+    assert.equal(local.length, 5);
+    for (const link of local) {
+      assert.equal("href" in link.props, false, "a local link carries no navigable href");
+      if (platform === "web") {
+        assert.match(link.props.accessibilityLabel, /^Show .* in the file manager$/);
+        assert.ok(link.props.dataSet?.bcpath, "web keeps the right-click path menu mark");
+      } else {
+        assert.match(link.props.accessibilityLabel, /^Path actions for /);
+        assert.equal(link.props.dataSet, undefined);
+      }
+    }
+    if (platform === "web") assert.equal(links.find(n => !n.props.accessibilityLabel && n.props.href)?.props.href, "https://example.com");
+  });
+}
+
+test("markdown: without a press handler a local link still never reaches an opener", () => {
+  const h = harness("client/components/markdown/markdown-view.tsx", "MarkdownView", async () => {}, "ios");
+  Object.assign(h.props, { variant: "document", text: "[x](file:///etc/passwd) [y](javascript:alert(1))" });
+  for (const link of h.nodes(h.render(), n => n.type === "Text" && n.props.accessibilityRole === "link")) link.props.onPress({});
+  assert.deepEqual(h.opened, []);
+});
+
+for (const platform of ["ios", "web"]) {
+  test(`usePathPress ${platform}: ${platform === "web" ? "reveals at once" : "opens the path sheet instead of revealing"}`, () => {
+    const revealed = [];
+    const h = harness("client/components/path-actions.tsx", "PathActionSheet", async () => {}, platform);
+    const { usePathPress } = h.load("client/components/path-actions.tsx");
+    const reveal = async path => { revealed.push(path); return null; };
+    h.run(() => usePathPress(reveal, "/work")).press("/abs/foo.ts");
+    const { sheet } = h.run(() => usePathPress(reveal, "/work"));
+    if (platform === "web") {
+      assert.deepEqual(revealed, ["/abs/foo.ts"]);
+      assert.equal(sheet.path, null);
+    } else {
+      assert.deepEqual(revealed, []);
+      assert.equal(sheet.path, "/abs/foo.ts");
+      assert.equal(sheet.cwd, "/work");
+      sheet.onClose();
+      assert.equal(h.run(() => usePathPress(reveal, "/work")).sheet.path, null);
+    }
+  });
+}
+
+function pathSheet(path, cwd, reveal, copyText = async () => {}) {
+  const h = harness("client/components/path-actions.tsx", "PathActionSheet", copyText, "ios");
+  const closed = [];
+  Object.assign(h.props, { path, cwd, reveal, onClose: () => closed.push(true) });
+  const actions = () => Object.fromEntries(h.nodes(h.render(), n => n.type === "Pressable").map(n => [n.props.accessibilityLabel, n]));
+  return { h, closed, actions };
+}
+
+test("PathActionSheet: Copy Path copies the path and closes; Show reveals and reports", async () => {
+  const revealed = [];
+  let answer = null;
+  const { h, closed, actions } = pathSheet("/abs/foo.ts", null, async path => { revealed.push(path); return answer; });
+  assert.equal(h.nodes(h.render(), n => n.type === "Modal")[0]?.props.open, true);
+  assert.deepEqual(Object.keys(actions()), ["Copy Path", "Show in File Manager"]);
+  actions()["Copy Path"].props.onPress();
+  await new Promise(setImmediate);
+  assert.deepEqual(h.calls, ["/abs/foo.ts"]);
+  assert.equal(closed.length, 1);
+  assert.equal(h.toasts.at(-1)?.variant, "success");
+  actions()["Show in File Manager"].props.onPress();
+  await new Promise(setImmediate);
+  assert.deepEqual(revealed, ["/abs/foo.ts"]);
+  assert.equal(closed.length, 2);
+  assert.match(h.toasts.at(-1)?.message, /file manager/);
+  answer = "not found";
+  actions()["Show in File Manager"].props.onPress();
+  await new Promise(setImmediate);
+  assert.equal(h.toasts.at(-1)?.variant, "error");
+  assert.match(h.toasts.at(-1)?.message, /not found/);
+  // The sheet only copies and reveals: nothing in it opens a file.
+  assert.equal(Object.keys(actions()).some(label => /open/i.test(label)), false);
+});
+
+test("PathActionSheet: a relative path without the agent folder is copy-only; closed renders nothing", () => {
+  assert.deepEqual(Object.keys(pathSheet("src/foo.ts", null, async () => null).actions()), ["Copy Path"]);
+  assert.deepEqual(Object.keys(pathSheet("src/foo.ts", "/work", async () => null).actions()), ["Copy Path", "Show in File Manager"]);
+  const { h } = pathSheet(null, null, async () => null);
+  assert.equal(h.render(), null);
+});
+
+test("PathActionSheet: a failed copy falls back to the readonly copy dialog", async () => {
+  const { h, actions } = pathSheet("/abs/foo.ts", null, async () => null, () => Promise.reject(new Error("Denied")));
+  actions()["Copy Path"].props.onPress();
+  await new Promise(setImmediate);
+  h.props.path = null; // the sheet closed
+  const input = h.nodes(h.render(), n => n.type === "SDK.TextInput")[0];
+  assert.equal(input?.props.value, "/abs/foo.ts");
+  assert.equal(h.toasts.at(-1)?.variant, "error");
+});

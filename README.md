@@ -289,7 +289,10 @@ match inside one of them.
 ## Opening files
 
 A file name in a read, write, edit, or code block is a link.
-Press it to show the path in the file manager.
+On desktop and web, press it to show the path in the file manager.
+On iOS and Android, that file manager belongs to another computer, so a press opens a sheet with **Copy Path** and **Show in File Manager**.
+A relative path without the agent's working folder offers **Copy Path** only.
+Neither platform opens a file from a press. The plugin SDK cannot open a file in Paseo's own viewer: see the first SDK limitation below.
 The path menu sends the agent ID and working folder when the renderer supplies them.
 The daemon reads the agent's current working folder through the Paseo SDK.
 
@@ -361,8 +364,10 @@ Web links with `http`, `https`, or `mailto` use real anchors in replies.
 The host can offer link-address actions. A normal press still uses Paseo's external opener.
 
 Paths a reply mentions in its prose are detected too: an absolute path, a home path, or a relative
-path ending in a file extension draws as a link. Pressing it shows the file in the file manager,
-like a file name on a tool card. On desktop and web, a right click opens the path menu above, whose
+path ending in a file extension draws as a link. Pressing it acts like a file name on a tool card,
+as described above. A markdown link to a local file, such as `[foo.ts](/abs/foo.ts)`,
+`[x](file:///tmp/x.txt)` or `[x](src/foo.ts:12)`, presses the same way. A `file:`, `javascript:`
+or other non-web scheme never reaches the external opener. On desktop and web, a right click opens the path menu above, whose
 **Open in Default App** asks first under the same rules. A `:55` line selector is accepted and
 stripped when the daemon resolves. Detection is deliberately conservative: half-width and
 full-width punctuation both end a candidate, and a relative token without an extension stays prose.
@@ -387,8 +392,10 @@ evidence and the workaround this plugin uses.
 timestamp, item}`, and plugin navigation offers only `openSettings`, `openSurface`,
    `openWorkspacePanel`, `openAgentPanel`, `openAgent`, and `openWorkspace`. The host's own file tab
    target (`{kind:"file", path}`, reachable in-app through `?open=file:<path>`) is not exposed, and
-   the `paseo://` scheme only carries agent deep links. Workaround: a daemon-side RPC that reveals
-   the path in the operating system's file manager.
+   the `paseo://` scheme only carries agent deep links. In 0.15, `addFilePanel` only registers a
+   viewer for files the host itself opens, and `openPanel` takes no file path. Workaround: a
+   daemon-side RPC that reveals the path in the operating system's file manager, and on iOS and
+   Android a sheet that also copies the path.
 2. **Transformers see a stripped item.** The app maps its stream item to the plugin item before any
    transformer runs, and a user message keeps only `text`, `messageId`, and `clientMessageId`. Pasted
    images never reach plugin code, and the daemon timeline row stores the same item, so a server RPC

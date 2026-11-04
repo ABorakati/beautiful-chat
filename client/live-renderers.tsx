@@ -12,6 +12,7 @@ import { TaskList } from "./components/task-list";
 import { UserMessage } from "./components/user-message";
 import { hostFontEscape } from "./components/host-font-escape";
 import { pathContextProps } from "./components/path-link-menu";
+import { PathActionSheet, usePathPress } from "./components/path-actions";
 import { promptRowAnchor } from "./components/prompt-anchor";
 import { surfaceProps } from "./components/view-props";
 import { useSelectionActions } from "./components/selection-actions";
@@ -92,13 +93,14 @@ export function LiveToolCallRenderer({
     displayData.tool === "advisor" || toolCardStartsExpanded(displayData, preferences);
 
   // The daemon side owns the shell, so revealing a file is one RPC. A path the
-  // daemon cannot stat answers with an error the press simply ignores.
+  // daemon cannot stat answers with an error the press ignores on web and the
+  // native path sheet shows.
   const handleRevealPath = useCallback(
-    (path: string) => {
-      void revealPath({ cwd: cwd ?? "", path }).catch(() => {});
-    },
+    (path: string) =>
+      revealPath({ cwd: cwd ?? "", path }).then((result) => result.error, (error: unknown) => String(error)),
     [cwd, revealPath],
   );
+  const pathPress = usePathPress(handleRevealPath, cwd);
 
   // Only a read or write of an image asks the daemon for bytes; the hook
   // itself refuses every other path, so a code read costs no RPC.
@@ -142,9 +144,10 @@ export function LiveToolCallRenderer({
         data={displayData}
         tokens={tokens}
         defaultExpanded={isExpanded}
-        onRevealPath={handleRevealPath}
+        onRevealPath={pathPress.press}
         imageFile={imageFile}
       />
+      <PathActionSheet {...pathPress.sheet} tokens={tokens} />
       <ChecklistFeed agentId={agentId} />
       <TimelineTailHub
         agentId={agentId}
@@ -287,16 +290,17 @@ export function LiveAssistantRenderer({
   // A markdown image with a relative path resolves against the agent's cwd.
   const cwd = useAgent(agentId, (agent) => agent.cwd);
 
-  // A path the reply mentions shows in the daemon machine's file manager, the
-  // same safe action a tool card's file name takes. Opening it goes through
-  // the path menu, which asks first.
+  // A path the reply mentions or links to shows in the daemon machine's file
+  // manager on web, the same safe action a tool card's file name takes; on
+  // native a press offers Copy Path too. Opening it goes through the path
+  // menu, which asks first.
   const revealPath = useRpc(revealPathRpc);
   const revealFile = useCallback(
-    (path: string) => {
-      void revealPath({ cwd: cwd ?? "", path, agentId }).catch(() => {});
-    },
+    (path: string) =>
+      revealPath({ cwd: cwd ?? "", path, agentId }).then((result) => result.error, (error: unknown) => String(error)),
     [agentId, cwd, revealPath],
   );
+  const pathPress = usePathPress(revealFile, cwd);
 
 
   // Replacing the reply costs the host's footer, which the stream layout hangs
@@ -323,9 +327,10 @@ export function LiveAssistantRenderer({
           foldCodeAfter={preferences.codeFoldLimit}
           cwd={cwd}
           marks={preferences.markSyntax}
-          onRevealFile={revealFile}
+          onRevealFile={pathPress.press}
         />
       )}
+      <PathActionSheet {...pathPress.sheet} tokens={tokens} />
       {isTail && !envelope ? (
         <AssistantFooter text={item.data.text} at={timestamp} tokens={tokens} />
       ) : null}

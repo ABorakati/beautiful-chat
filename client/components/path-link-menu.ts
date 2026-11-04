@@ -4,6 +4,7 @@ import { Platform, type TextProps, type ViewProps } from "react-native";
 import { revealPathRpc, type OpenPathPolicy } from "../../shared/file-rpc";
 import { getEnhancerPreferences, updateEnhancerPreferences } from "../preferences";
 import { isSafeOpenPath, normalizeOpenPath, requiresOpenConfirmation } from "../../shared/path-open-policy";
+import { fileUrlToPath } from "./open-link";
 import { radius } from "./theme-tokens";
 
 const GAP = 8;
@@ -31,15 +32,7 @@ interface PathContext {
 /** Leave host routes to the host. Unix paths need a plugin marker or file URL. */
 function filePathFromAnchor(href: string): string | null {
   if (/^(?:[a-zA-Z]:[\\/]|\\\\)/.test(href)) return href;
-  if (!/^file:\/\//i.test(href)) return null;
-  try {
-    const url = new URL(href);
-    const path = decodeURIComponent(url.pathname);
-    if (url.hostname && url.hostname !== "localhost") return `//${url.hostname}${path}`;
-    return /^\/[a-zA-Z]:\//.test(path) ? path.slice(1) : path;
-  } catch {
-    return null;
-  }
+  return fileUrlToPath(href);
 }
 
 const MENU_CSS = `
