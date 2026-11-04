@@ -6,8 +6,20 @@ import type { ZodType, input as ZodInput, output as ZodOutput } from "zod";
  * Host-injected client hooks, stubbed for the offline screenshot harness.
  * Only the shapes the presentational path touches are provided.
  */
+/**
+ * An agent timeline that never answers. The live checklist feed waits on it
+ * and keeps every card visible, as it does while a real feed is unavailable.
+ */
+const silentTimeline = {
+  subscribe: () => Object.assign(() => {}, { ready: new Promise<void>(() => {}) }),
+  refetch: async () => ({ entries: [], hasOlder: false }),
+};
+const offlinePaseo = {
+  agents: { ref: () => ({ timeline: silentTimeline, refresh: async () => null }) },
+};
+
 export function usePaseo() {
-  return {} as never;
+  return offlinePaseo as never;
 }
 
 export function useAgent<T>(_agentId: string, selector: (agent: never) => T): T | null {

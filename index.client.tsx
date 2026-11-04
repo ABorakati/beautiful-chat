@@ -16,6 +16,7 @@ import {
   isSupersededChecklist,
   subscribeSupersededChecklist,
 } from "./client/components/checklist-live";
+import { buildToolCallPayload } from "./client/tool-call-data";
 import {
   LiveToolCallRenderer,
   LiveReasoningRenderer,
@@ -23,7 +24,6 @@ import {
   LiveUserMessageRenderer,
   LiveNoticeRenderer,
   LiveAssistantRenderer,
-  extractErrorText,
 } from "./client/live-renderers";
 
 type JsonValue = boolean | null | number | string | JsonValue[] | { [key: string]: JsonValue };
@@ -71,14 +71,10 @@ export default function contribute(client: PluginClientContext) {
             type: "plugin" as const,
             kind: "omp-tool-call",
             version: 1,
-            data: {
-              name: item.name,
-              status: item.status,
-              detail: toJsonValue(item.detail),
-              ...(item.callId ? { callId: item.callId } : {}),
-              error: extractErrorText(item.error),
-              phase,
-            },
+            // `metadata` carries the host's `source`/`customType`: omp's
+            // retry, fallback and goal rows share a tool name, and the
+            // unclaimed `custom` messages are only identifiable there.
+            data: buildToolCallPayload(item, phase) as unknown as JsonValue,
           },
         ],
       };
@@ -96,6 +92,7 @@ export default function contribute(client: PluginClientContext) {
       callId: z.string().optional(),
       error: z.string().nullable().optional(),
       phase: z.string().optional(),
+      metadata: z.record(z.string(), z.unknown()).optional(),
     }),
     Component: LiveToolCallRenderer,
   });

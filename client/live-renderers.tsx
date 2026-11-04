@@ -5,7 +5,6 @@ import { useRevealedText } from "@getpaseo/plugin/client/react-native";
 import type { PluginTimelineItemProps } from "@getpaseo/plugin/client";
 import type { PluginTheme } from "@getpaseo/plugin";
 import { buildThemeTokens } from "./components/theme-tokens";
-import { buildUnifiedDiffText } from "./components/diff-text";
 import { ToolCallout } from "./components/tool-callouts";
 import { toolCardStartsExpanded } from "./tool-collapse";
 import { ReasoningTrace } from "./components/reasoning-trace";
@@ -20,8 +19,8 @@ import { usePointerGlow } from "./components/glow";
 import { useFrostedGlass } from "./components/frosted";
 import type { TurnUsage } from "./components/user-message";
 import { NoticeCallout } from "./components/notice-callout";
+import { StatusLine } from "./components/status-line";
 import { useEnhancerPreferences } from "./preferences";
-import { buildHubData } from "./hub-details";
 import { publishHubSnapshot } from "./hub-activity";
 import { MarkdownView } from "./components/markdown/markdown-view";
 import { TimelineTailHub } from "./components/hub-live";
@@ -30,35 +29,13 @@ import { AssistantFooter } from "./components/turn-footer";
 import { SystemCard } from "./components/system-card";
 import { parseSystemEnvelope } from "./system-envelope";
 import { useIsTimelineTail } from "./timeline-tail";
-import type {
-  ToolCalloutData,
-  ToolCallKind,
-  ReasoningTraceData,
-  EvalCell,
-  HubData,
-  McpToolData,
-  NoticeCalloutData,
-  PaseoToolData,
-  GitHubToolData,
-} from "../shared/contracts";
+import { buildToolCalloutData } from "./tool-call-data";
+import type { ToolCallPayload } from "./tool-call-data";
+import type { ToolCalloutData, ReasoningTraceData, NoticeCalloutData } from "../shared/contracts";
 import { revealPathRpc } from "../shared/file-rpc";
-import { buildGitHubData } from "./github-request";
 import { useImageFile } from "./image-file";
 
-type JsonValue = boolean | null | number | string | JsonValue[] | { [key: string]: JsonValue };
-
-function toJsonValue(value: unknown): JsonValue {
-  return value as JsonValue;
-}
-
-export interface LiveToolCallPayload {
-  name: string;
-  status: string;
-  detail?: Record<string, unknown>;
-  callId?: string;
-  error?: string | null;
-  phase?: string;
-}
+export type LiveToolCallPayload = ToolCallPayload;
 
 export interface LiveReasoningPayload {
   text: string;
@@ -74,365 +51,6 @@ export interface LiveNoticePayload {
   level: string;
   message: string;
   fatal?: boolean;
-}
-
-function extractStringProp(obj: unknown, key: string): string | undefined {
-  if (obj && typeof obj === "object" && key in obj) {
-    const val = Reflect.get(obj, key);
-    return typeof val === "string" ? val : undefined;
-  }
-  return undefined;
-}
-
-/** The eval result nests its cells under `details`, not under the call input. */
-interface RawEvalCell {
-  title?: unknown;
-  code?: unknown;
-  language?: unknown;
-  output?: unknown;
-}
-
-/**
- * Eval reports the source it ran and the text that source printed. Both live
- * inside the result payload, so reading only the top level yields a JSON blob
- * where the cell should be.
- */
-export function extractEvalCells(
-  detail: Record<string, unknown>,
-  input: Record<string, unknown>,
-  output: unknown,
-): EvalCell[] {
-  const container =
-    output && typeof output === "object" ? (output as Record<string, unknown>) : detail;
-  const details =
-    container.details && typeof container.details === "object"
-      ? (container.details as Record<string, unknown>)
-      : {};
-  const fallbackLanguage =
-    typeof details.language === "string"
-      ? details.language
-      : typeof input.language === "string"
-        ? input.language
-        : "js";
-
-  const raw = Array.isArray(details.cells) ? (details.cells as RawEvalCell[]) : [];
-  const cells = raw
-    .map((cell): EvalCell | null => {
-      const code = typeof cell.code === "string" ? cell.code : "";
-      if (!code) return null;
-      return {
-        title: typeof cell.title === "string" ? cell.title : undefined,
-        code,
-        language: normalizeKernel(
-          typeof cell.language === "string" ? cell.language : fallbackLanguage,
-        ),
-        output: typeof cell.output === "string" ? cell.output : undefined,
-      };
-    })
-    .filter((cell): cell is EvalCell => cell !== null);
-
-  if (cells.length > 0) return cells;
-
-  // A provider that does not nest still supplies the source on the call input.
-  const code = typeof input.code === "string" ? input.code : "";
-  if (!code) return [];
-  return [
-    {
-      title: typeof input.title === "string" ? input.title : undefined,
-      code,
-      language: normalizeKernel(fallbackLanguage),
-      output: extractContentText(container),
-    },
-  ];
-}
-
-/** Kernel ids are short; the highlighter names dialects in full. */
-function normalizeKernel(language: string): string {
-  const id = language.toLowerCase();
-  if (id === "py" || id === "python") return "python";
-  return "typescript";
-}
-
-/** A tool's human-readable text sits in the first text block of `content`. */
-export function extractContentText(container: Record<string, unknown>): string | undefined {
-  const content = container.content;
-  if (!Array.isArray(content)) return undefined;
-  for (const block of content) {
-    if (block && typeof block === "object") {
-      const text = (block as Record<string, unknown>).text;
-      if (typeof text === "string" && text.length > 0) return text;
-    }
-  }
-  return undefined;
-}
-
-/**
- * The readable message in a failed call's `error`, which each provider shapes
- * its own way. Claude hands over the raw tool result with the text in
- * `content`. `String()` on that record printed "[object Object]".
- */
-export function extractErrorText(error: unknown): string | null {
-  if (!error) return null;
-  if (typeof error === "string") return error;
-  if (typeof error !== "object") return String(error);
-  const record = error as Record<string, unknown>;
-  const text =
-    asString(record.content) ??
-    asString(record.message) ??
-    asString(record.text) ??
-    extractContentText(record);
-  return text ?? JSON.stringify(error);
-}
-
-/** Eval times the whole run and reports it beside the cells. */
-export function extractEvalDuration(output: unknown): number | undefined {
-  if (!output || typeof output !== "object") return undefined;
-  const details = (output as Record<string, unknown>).details;
-
-  if (!details || typeof details !== "object") return undefined;
-  const value = (details as Record<string, unknown>).durationMs;
-  return typeof value === "number" ? value : undefined;
-}
-
-/**
- * The most characters of a raw payload a generic card carries. A search or
- * listing tool can answer with megabytes, and the card only ever shows a
- * screenful of it.
- */
-const RAW_PAYLOAD_LIMIT = 20_000;
-
-/**
- * Keeps a raw call payload JSON-serialisable and bounded. Anything that does
- * not stringify (a cycle, a bigint) or that is too long becomes truncated text
- * rather than throwing inside a render.
- */
-function capRawPayload(value: unknown): unknown {
-  if (value === undefined || value === null || value === "") return undefined;
-  if (typeof value === "string") {
-    return value.length > RAW_PAYLOAD_LIMIT
-      ? `${value.slice(0, RAW_PAYLOAD_LIMIT)}\n… truncated`
-      : value;
-  }
-  try {
-    const text = JSON.stringify(value, null, 2);
-    if (text === undefined) return undefined;
-    return text.length > RAW_PAYLOAD_LIMIT
-      ? `${text.slice(0, RAW_PAYLOAD_LIMIT)}\n… truncated`
-      : value;
-  } catch {
-    return String(value).slice(0, RAW_PAYLOAD_LIMIT);
-  }
-}
-
-function asString(value: unknown): string | undefined {
-  return typeof value === "string" && value.length > 0 ? value : undefined;
-}
-
-/**
- * One `task` call spawns a batch, so the card reads the call's own arguments:
- * the shared `context` and the `tasks` array. The result text only confirms
- * the ids, and it is absent while the call is still running, which is exactly
- * when the reader most wants to see what was sent.
- */
-export function buildSubagentBatch(input: Record<string, unknown>): ToolCalloutData["subagent"] {
-  const entries = Array.isArray(input.tasks) ? input.tasks : [];
-  const agents = entries.flatMap((entry, index) => {
-    if (!entry || typeof entry !== "object") return [];
-    const row = entry as Record<string, unknown>;
-    const brief = asString(row.task);
-    if (!brief) return [];
-    return [
-      {
-        name: asString(row.name) ?? `agent ${index + 1}`,
-        agentType: asString(row.agent) ?? "task",
-        task: brief,
-      },
-    ];
-  });
-  if (agents.length === 0) return undefined;
-  const context = asString(input.context);
-  return context ? { context, agents } : { agents };
-}
-
-/** Splits `mcp__server__tool` and keeps the call's own arguments and result. */
-export function buildMcpData(
-  rawName: string,
-  input: Record<string, unknown>,
-  output: unknown,
-  durationMs: number | undefined,
-): McpToolData {
-  const parts = rawName.replace(/^mcp__/, "").split("__");
-  return {
-    server: parts.length > 1 ? (parts[0] ?? "mcp") : "mcp",
-    tool: parts.length > 1 ? parts.slice(1).join(" / ") : (parts[0] ?? rawName),
-    arguments: input,
-    // An MCP server answers with content blocks. Keeping the envelope here put
-    // `{"content":[{"type":"text",…}]}` in the response panel, so the prose is
-    // unwrapped first and only a genuinely structured payload stays an object.
-    result:
-      (output && typeof output === "object"
-        ? extractContentText(output as Record<string, unknown>)
-        : undefined) ?? (output === "" ? undefined : output),
-    durationMs,
-  };
-}
-
-/** Paseo's own agent tools. Only `create_agent` carries a record worth a card. */
-export function buildPaseoData(
-  rawName: string,
-  input: Record<string, unknown>,
-  outputText: string | undefined,
-  durationMs: number | undefined,
-): PaseoToolData | undefined {
-  if (rawName !== "create_agent") return undefined;
-  const provider = asString(input.provider) ?? "agent";
-  const [providerId, model] = provider.split("/");
-  return {
-    id: `paseo-${rawName}`,
-    tool: "create_agent",
-    durationMs,
-    createAgent: {
-      title: asString(input.title) ?? "New agent",
-      provider: providerId ?? provider,
-      model: model ?? asString(input.model),
-      initialPrompt: asString(input.initialPrompt) ?? "",
-      agentId: outputText?.match(/[0-9a-f]{8}-[0-9a-f-]{27}/i)?.[0],
-      status: "created",
-    },
-  };
-}
-
-interface AskOption {
-  id: string;
-  label: string;
-  description?: string;
-  recommended?: boolean;
-}
-
-/**
- * The ask tool nests its prompt under `questions`, so reading `input.question`
- * finds nothing and the options never reach the callout.
- */
-export function extractAskQuestion(input: Record<string, unknown>): {
-  question: string;
-  options: AskOption[];
-} | null {
-  const raw = Array.isArray(input.questions)
-    ? (input.questions[0] as Record<string, unknown> | undefined)
-    : typeof input.question === "string"
-      ? input
-      : undefined;
-  if (!raw) return null;
-
-  const question = typeof raw.question === "string" ? raw.question : "";
-  const recommended = typeof raw.recommended === "number" ? raw.recommended : undefined;
-  const options = Array.isArray(raw.options)
-    ? raw.options.flatMap((entry, index): AskOption[] => {
-        if (!entry || typeof entry !== "object") return [];
-        const option = entry as Record<string, unknown>;
-        const label = typeof option.label === "string" ? option.label : "";
-        if (!label) return [];
-        return [
-          {
-            id: typeof option.id === "string" ? option.id : `opt-${index}`,
-            label,
-            description: typeof option.description === "string" ? option.description : undefined,
-            recommended: index === recommended,
-          },
-        ];
-      })
-    : [];
-
-  if (!question && options.length === 0) return null;
-  return { question, options };
-}
-
-/**
- * The chosen answer is reported as prose, so the prefix is stripped and the
- * remainder kept verbatim — it may be a typed reply rather than a label.
- */
-export function extractAskAnswer(text?: string): string | undefined {
-  if (!text) return undefined;
-  const trimmed = text.trim();
-  if (!trimmed) return undefined;
-  const match = trimmed.match(/^user\s+(?:selected|answered|chose)\s*:?\s*/i);
-  const answer = match ? trimmed.slice(match[0].length).trim() : trimmed;
-  return answer.length > 0 ? answer : undefined;
-}
-
-/**
- * The selected option labels.
- *
- * The ask result nests its answer, so reading the top level yields the whole
- * JSON object where the choice should be. `details.selectedOptions` is the
- * authoritative list and covers multi-select; the prose line is the fallback
- * for a host that does not report it. A typed reply arrives here too, and
- * matches no option label, which is exactly how free text should behave.
- */
-export function extractAskSelections(output: unknown, outputText?: string): string[] {
-  const container =
-    output && typeof output === "object" ? (output as Record<string, unknown>) : undefined;
-
-  const details = container?.details;
-  if (details && typeof details === "object") {
-    const selected = (details as Record<string, unknown>).selectedOptions;
-    if (Array.isArray(selected)) {
-      const labels = selected.filter(
-        (entry): entry is string => typeof entry === "string" && entry.length > 0,
-      );
-      if (labels.length > 0) return labels;
-    }
-  }
-
-  const prose = container ? extractContentText(container) : outputText;
-  const single = extractAskAnswer(prose);
-  return single ? [single] : [];
-}
-
-/** Extension to the language ids the highlighter and the devicons share. */
-const LANGUAGE_BY_EXTENSION: Record<string, string> = {
-  ts: "typescript",
-  mts: "typescript",
-  cts: "typescript",
-  tsx: "typescript",
-  js: "javascript",
-  mjs: "javascript",
-  cjs: "javascript",
-  jsx: "javascript",
-  py: "python",
-  rs: "rust",
-  go: "go",
-  sh: "bash",
-  bash: "bash",
-  zsh: "bash",
-  json: "json",
-  jsonc: "json",
-  md: "markdown",
-  markdown: "markdown",
-  html: "html",
-  htm: "html",
-  css: "css",
-  scss: "css",
-  sass: "css",
-  sql: "sql",
-  yml: "yaml",
-  yaml: "yaml",
-};
-
-/**
- * The language a file is written in, read from its path.
- *
- * Nothing upstream reports this, so the callout used to carry no language at
- * all: the header fell back to a letter monogram and the code block assumed
- * TypeScript, which mislabels every Python or Rust read it renders.
- */
-export function languageFromPath(filePath?: string): string | undefined {
-  if (!filePath) return undefined;
-  const base = (filePath.toLowerCase().split(/[/\\]/).pop() ?? "").split(/[\s:?#]/)[0] ?? "";
-  if (base === "dockerfile" || base.startsWith("dockerfile.")) return "docker";
-  if (!base.includes(".")) return undefined;
-  const ext = base.split(".").pop() ?? "";
-  return LANGUAGE_BY_EXTENSION[ext];
 }
 
 export function LiveToolCallRenderer({
@@ -454,218 +72,7 @@ export function LiveToolCallRenderer({
   useFrostedGlass(preferences.frostedGlass);
   const data = item.data;
 
-  const calloutData = useMemo((): ToolCalloutData => {
-    const rawName = (data.name || "").toLowerCase();
-    const detail = (data.detail && typeof data.detail === "object" ? data.detail : {}) as Record<
-      string,
-      unknown
-    >;
-    const detailType = typeof detail.type === "string" ? detail.type.toLowerCase() : "";
-    const input = (
-      detail.input && typeof detail.input === "object"
-        ? detail.input
-        : detail.arguments && typeof detail.arguments === "object"
-          ? detail.arguments
-          : detail.args && typeof detail.args === "object"
-            ? detail.args
-            : {}
-    ) as Record<string, unknown>;
-    const output = detail.output ?? detail.result ?? detail.content ?? "";
-
-    // Universal path extraction across OMP, Paseo, Claude, and Codex formats
-    const filePath: string | undefined =
-      (typeof detail.filePath === "string" ? detail.filePath : undefined) ||
-      (typeof input.path === "string" ? input.path : undefined) ||
-      (typeof input.filePath === "string" ? input.filePath : undefined) ||
-      (typeof detail.path === "string" ? detail.path : undefined);
-
-    // Universal command extraction
-    const command: string | undefined =
-      (typeof detail.command === "string" ? detail.command : undefined) ||
-      (typeof input.command === "string" ? input.command : undefined) ||
-      (typeof detail.input === "string" ? detail.input : undefined);
-
-    // Universal code / file content extraction
-    const code: string | undefined =
-      (typeof detail.content === "string" ? detail.content : undefined) ||
-      (typeof output === "string" ? output : undefined) ||
-      (typeof input.content === "string" ? input.content : undefined);
-
-    // Universal diff extraction. A provider that ships an edit as before and
-    // after text instead of a patch — opencode among them — gets the same
-    // treatment the host's own view gives it: the diff is computed from the
-    // pair, so the card shows the change rather than the tool's summary line.
-    const editOld =
-      (typeof detail.oldString === "string" ? detail.oldString : undefined) ??
-      (typeof input.oldString === "string" ? input.oldString : undefined);
-    const editNew =
-      (typeof detail.newString === "string" ? detail.newString : undefined) ??
-      (typeof input.newString === "string" ? input.newString : undefined);
-    const computedEditDiff: string | undefined =
-      editOld !== undefined || editNew !== undefined
-        ? buildUnifiedDiffText(editOld ?? "", editNew ?? "")
-        : undefined;
-    const diff: string | undefined =
-      (typeof detail.unifiedDiff === "string" ? detail.unifiedDiff : undefined) ||
-      (typeof detail.diff === "string" ? detail.diff : undefined) ||
-      extractStringProp(output, "diff") ||
-      computedEditDiff;
-
-    // A tool that answers with content blocks carries its prose in
-    // `content[0].text`. That text is allowed to be empty — a `hub wait` job
-    // snapshot puts everything in `details` and nothing in the text — so there
-    // is deliberately no stringify fallback here: a card renders from its typed
-    // record instead. Stringifying the envelope is what printed raw JSON.
-    const outputText: string | undefined =
-      typeof output === "string"
-        ? output
-        : extractStringProp(output, "stdout") ||
-          extractStringProp(output, "text") ||
-          (output && typeof output === "object"
-            ? extractContentText(output as Record<string, unknown>)
-            : undefined);
-    // A failed call can carry its message beside the detail rather than in it,
-    // which left the card saying the command printed nothing.
-    const errorText =
-      data.status === "failed" && typeof data.error === "string" && data.error.trim()
-        ? data.error
-        : undefined;
-    const durationMs =
-      typeof detail.durationMs === "number" ? detail.durationMs : extractEvalDuration(output);
-    let toolKind: ToolCallKind = "generic";
-    let hub: HubData | undefined;
-    let mcp: McpToolData | undefined;
-    let subagent: ToolCalloutData["subagent"];
-    let paseo: PaseoToolData | undefined;
-    let github: GitHubToolData | undefined;
-    let evalCells: EvalCell[] = [];
-    let askOptions: AskOption[] = [];
-    let askAnswer: string[] = [];
-    let title = data.name || "tool";
-
-    const isGitHubTool =
-      rawName === "github" ||
-      detailType === "github" ||
-      filePath === "xd://github" ||
-      filePath?.startsWith("xd://github/") === true;
-    const isGitCommand =
-      rawName === "git" || detailType === "git" || /^\s*git(?:\.exe)?(?:\s|$)/i.test(command ?? "");
-
-    if (isGitHubTool) {
-      toolKind = "github";
-      // A device call is a write: `content` is the request, and the tool's own
-      // result text is the reply. They are read separately here because the
-      // generic `code` extraction prefers whichever it finds first, which drew
-      // the request twice and the answer never.
-      const request = asString(input.content) ?? asString(detail.content);
-      const reply = outputText && outputText !== request ? outputText : undefined;
-      github = buildGitHubData(request, reply);
-      title = github
-        ? [github.op, github.repo, github.subject].filter(Boolean).join(" ")
-        : "GitHub";
-    } else if (isGitCommand) {
-      toolKind = "git";
-      title = command ? `$ ${command.trim()}` : "Git command";
-    } else if (rawName === "read" || detailType === "read") {
-      toolKind = "read";
-      title = filePath ? `Read ${filePath.split(/[/\\]/).pop() || filePath}` : "Read file";
-    } else if (rawName === "write" || detailType === "write") {
-      toolKind = "write";
-      title = filePath ? `Write ${filePath.split(/[/\\]/).pop() || filePath}` : "Write file";
-    } else if (rawName === "edit" || detailType === "edit") {
-      toolKind = "edit";
-      title = filePath ? `Edit ${filePath.split(/[/\\]/).pop() || filePath}` : "Edit file";
-    } else if (rawName === "bash" || rawName === "shell" || detailType === "shell") {
-      toolKind = rawName === "shell" || detailType === "shell" ? "shell" : "bash";
-      title = command ? `$ ${command.trim()}` : "Execute command";
-    } else if (rawName === "thinking") {
-      toolKind = "thinking";
-      title = "Reasoning Process";
-    } else if (
-      rawName === "create_agent" ||
-      rawName === "list_providers" ||
-      rawName === "list_models" ||
-      rawName === "get_agent_activity" ||
-      rawName === "send_agent_prompt" ||
-      rawName === "get_agent_status"
-    ) {
-      toolKind = "paseo";
-      title = `Paseo: ${rawName}`;
-      paseo = buildPaseoData(rawName, input, outputText, durationMs);
-    } else if (rawName.startsWith("mcp__") || rawName === "mcp") {
-      toolKind = "mcp";
-      title = rawName.replace(/^mcp__/, "").replace(/__/g, " / ");
-      mcp = buildMcpData(rawName, input, output, durationMs);
-    } else if (rawName === "ask") {
-      toolKind = "ask";
-      const asked = extractAskQuestion(input);
-      title = asked?.question || "User Decision";
-      askOptions = asked?.options ?? [];
-      askAnswer = extractAskSelections(output, outputText);
-    } else if (rawName === "hub") {
-      toolKind = "hub";
-      title = `Hub: ${String(input.op || "operation")}`;
-      hub = buildHubData(input, outputText, output);
-    } else if (rawName === "eval") {
-      toolKind = "eval";
-      evalCells = extractEvalCells(detail, input, output);
-      const cellTitle = evalCells.find((cell) => cell.title)?.title;
-      title = cellTitle ? `Eval: ${cellTitle}` : "Eval Kernel";
-    } else if (rawName === "task") {
-      toolKind = "task";
-      subagent = buildSubagentBatch(input);
-      const count = subagent?.agents.length ?? 0;
-      title =
-        count === 1 ? (subagent?.agents[0]?.name ?? "Subagent") : `${count || "No"} subagents`;
-    }
-
-    const exitCodeCandidate =
-      typeof detail.exitCode === "number"
-        ? detail.exitCode
-        : typeof detail.code === "number"
-          ? detail.code
-          : undefined;
-
-    return {
-      id: `live-${rawName}`,
-      tool: toolKind,
-      title,
-      status:
-        data.status === "running" ? "running" : data.status === "failed" ? "failed" : "completed",
-      filePath,
-      // Keep the full command available when the single-line header is collapsed.
-      command,
-      language:
-        toolKind === "bash" || toolKind === "shell" || toolKind === "git"
-          ? "bash"
-          : languageFromPath(filePath),
-      // A github card reads its typed record; leaving `code` and `output` set
-      // would draw the request and the reply a second time.
-      code: toolKind === "github" || toolKind === "generic" ? undefined : code,
-      diff,
-      output:
-        toolKind === "github" || toolKind === "generic" || evalCells.length > 0
-          ? undefined
-          : outputText || errorText,
-      cells: evalCells.length > 0 ? evalCells : undefined,
-      askOptions: askOptions.length > 0 ? askOptions : undefined,
-      askAnswer: askAnswer.length > 0 ? askAnswer : undefined,
-      exitCode: exitCodeCandidate,
-      durationMs,
-      hub,
-      subagent,
-      mcp,
-      paseo,
-      github,
-      // Only the generic card draws the raw call, so no typed card shows a
-      // payload twice.
-      input:
-        toolKind === "generic"
-          ? capRawPayload(detail.input ?? detail.arguments ?? detail.args)
-          : undefined,
-      rawOutput: toolKind === "generic" ? (capRawPayload(output) ?? errorText) : undefined,
-    };
-  }, [data]);
+  const calloutData = useMemo(() => buildToolCalloutData(data), [data]);
 
   // The dock has no access to the job manager, so the timeline is its only
   // source: every job snapshot that passes through a card is republished, and
@@ -680,7 +87,12 @@ export function LiveToolCallRenderer({
     });
   }, [hubData, agentId]);
 
-  const isExpanded = toolCardStartsExpanded(calloutData, preferences);
+  // A relayed `custom` message without a readable envelope reads as prose.
+  const displayData: ToolCalloutData =
+    calloutData.tool === "system" ? { ...calloutData, tool: "note" } : calloutData;
+  // Advisor notes open: a collapsed one says only "Advisor · 1 note".
+  const isExpanded =
+    displayData.tool === "advisor" || toolCardStartsExpanded(displayData, preferences);
 
   // The daemon side owns the shell, so revealing a file is one RPC. A path the
   // daemon cannot stat answers with an error the press simply ignores.
@@ -698,10 +110,39 @@ export function LiveToolCallRenderer({
     cwd,
   );
 
+  // Telemetry is a status line, not a call: no header, no body, no disclosure.
+  if (calloutData.tool === "status" && calloutData.telemetry) {
+    return (
+      <View {...hostFontEscape}>
+        <StatusLine
+          title={calloutData.title}
+          data={calloutData.telemetry}
+          status={calloutData.status}
+          tokens={tokens}
+        />
+      </View>
+    );
+  }
+
+  // A relayed `custom` message is not a tool call. When its text is an
+  // envelope the plugin can read, the row draws the same standalone card an
+  // `error` item uses. Text it cannot read falls through to the prose card
+  // below, so an unknown custom type still shows its words.
+  if (calloutData.tool === "system") {
+    const envelope = parseSystemEnvelope(calloutData.text ?? "");
+    if (envelope) {
+      return (
+        <View {...hostFontEscape}>
+          <SystemCard envelope={envelope} tokens={tokens} />
+        </View>
+      );
+    }
+  }
+
   return (
     <View {...surfaceProps(hostFontEscape, pathContextProps(agentId, cwd) ?? {})}>
       <ToolCallout
-        data={calloutData}
+        data={displayData}
         tokens={tokens}
         defaultExpanded={isExpanded}
         onRevealPath={handleRevealPath}
@@ -864,9 +305,10 @@ export function LiveAssistantRenderer({
   const itemKey = `assistant:${timestamp.getTime()}`;
   const isTail = useIsTimelineTail(agentId, itemKey);
 
-  // Job results, IRC relays and reminders arrive as replies because the host
-  // files any unclaimed `custom` message under this item kind. They are not
-  // the model's words, so they are drawn as a card, not as prose.
+  // Job results, IRC relays and reminders once arrived as replies, because an
+  // unclaimed `custom` message used to be filed under this item kind. Current
+  // hosts send them as synthetic tool calls instead (see `tool-call-data.ts`);
+  // the parse stays for rows recorded by older hosts.
   const envelope = useMemo(() => parseSystemEnvelope(item.data.text), [item.data.text]);
 
   return (
