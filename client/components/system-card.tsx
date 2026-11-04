@@ -74,7 +74,7 @@ export function SystemCard({ envelope, tokens }: SystemCardProps): React.ReactEl
         },
         badge: {
           fontFamily: tokens.fontUi,
-          fontSize: 10,
+          fontSize: tokens.fs(10),
           fontWeight: "700",
           textTransform: "uppercase",
           letterSpacing: 0.5,
@@ -83,7 +83,7 @@ export function SystemCard({ envelope, tokens }: SystemCardProps): React.ReactEl
         },
         title: {
           fontFamily: tokens.fontUi,
-          fontSize: 12,
+          fontSize: tokens.fs(12),
           fontWeight: "600",
           color: tokens.foreground,
           flexShrink: 1,
@@ -97,7 +97,7 @@ export function SystemCard({ envelope, tokens }: SystemCardProps): React.ReactEl
         },
         chip: {
           fontFamily: tokens.fontUi,
-          fontSize: 10,
+          fontSize: tokens.fs(10),
           color: tokens.foregroundSubtle,
           backgroundColor: tokens.surface2,
           paddingHorizontal: 6,
@@ -109,8 +109,8 @@ export function SystemCard({ envelope, tokens }: SystemCardProps): React.ReactEl
         body: { padding: 10 },
         prose: {
           fontFamily: tokens.fontUi,
-          fontSize: 12,
-          lineHeight: 18 * tokens.leading,
+          fontSize: tokens.fs(12),
+          lineHeight: tokens.fs(18) * tokens.leading,
           color: tokens.foreground,
         },
       }),

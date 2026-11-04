@@ -1,12 +1,15 @@
 /**
- * Harness text that the host files as a chat message.
+ * Harness text that reaches the chat as a row of its own.
  *
- * omp sends job results, IRC relays and reminders as `custom` messages. The
- * host claims two shapes — advisor notes and `<system-notice>` — and turns
- * everything else into a message carrying the raw text
- * (`providers/omp/agent.ts:2027`, and the same fallback on history replay in
- * `providers/omp/message-history.js`). The XML envelope then lands in the chat
- * as if the model had typed it.
+ * omp sends job results, IRC relays, supervised-process reports and reminders
+ * as `custom` messages. Paseo claims two shapes — advisor notes and
+ * `<system-notice>` — and files the rest per its own version: up to 0.11.1 the
+ * remainder became an assistant message carrying the raw text, so the XML
+ * envelope landed in the chat as if the model had typed it; from 0.11.2 it
+ * becomes a synthetic tool call named after the `customType`, with the same
+ * raw text in `detail.text` and the structured payload in `metadata.details`.
+ * `client/tool-call-data.ts` routes the second shape here, and the assistant
+ * renderer still routes the first, so both hosts read the same envelopes.
  *
  * This reads the envelope back so the plugin can draw it as a card. It never
  * guesses: a string that does not open with a known tag returns null and is

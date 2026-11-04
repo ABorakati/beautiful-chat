@@ -31,6 +31,7 @@ function bodyLines(data: ToolCalloutData): number {
     lineCount(data.code) +
     lineCount(data.diff) +
     lineCount(data.output) +
+    lineCount(data.text) +
     lineCount(mcp) +
     (data.cells ?? []).reduce((sum, cell) => sum + lineCount(cell.code) + lineCount(cell.output), 0)
   );

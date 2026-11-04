@@ -1,8 +1,8 @@
 # Beautiful Chat
 
 A Paseo plugin that redraws the Oh My Pi (OMP) chat stream: tool calls, reasoning, prompts, approvals,
-and checklists. It replaces the host rendering of OMP timeline items with typed, syntax-aware cards
-that follow the active Paseo theme.
+checklists, advisor notes, and retry/fallback telemetry. It replaces the host rendering of OMP
+timeline items with typed, syntax-aware cards that follow the active Paseo theme.
 
 ![A prompt, a tool call, a finished background job, and the reply that closes the turn](images/hero.png)
 
@@ -111,6 +111,35 @@ Paseo's own mark leads the card, and the created agent's provider carries its br
 
 ![Paseo tool call](docs/images/paseo.png)
 
+### Advisor notes
+
+omp's advisor speaks as a `custom` message. Paseo rewrites it as a synthetic tool call whose
+`detail.text` is the notes joined by blank lines, each prefixed with `[severity]` and, when known,
+`[advisor]`; the structured notes never reach plugin code, so those prefixes are the only source
+for per-note weight. The card keeps the advisor's own order, badges every note (`nit`, `concern`,
+`blocker`), rails a blocker in the danger colour, opens expanded, and clips past six notes behind
+**Show all N notes**. The counts come from `metadata.noteCount` and `metadata.blockerCount`.
+
+![Advisor notes](docs/images/advisor.png)
+
+### Retry, fallback, goals, and relayed messages
+
+`retry_fallback_applied`, `retry_fallback_succeeded`, `auto_retry_start`, `auto_retry_end`, and
+`goal_updated` arrive as synthetic tool calls that share one name per pair, so the row switches on
+`metadata.source` rather than on the tool name. It is a single line — the host's label, then chips
+for the structured half of `metadata` (`role`, `from → to`, `attempt`, `retry in`, `goal`), with
+the error text trailing where the event carries one. No tool chrome: nothing was called and there
+is nothing to open.
+
+omp's other `custom` messages take the same route. A supervised-process report and an IRC relay
+draw as the standalone card the `error` rows already use, parsed from the message text; a text the
+plugin cannot read still shows its words in a prose card.
+
+A `<system-notice>` job completion is the exception: the host turns it into a `notification` item,
+and the plugin SDK accepts no transformer for that item type, so those rows keep the host's styling.
+
+![Retry, fallback, relayed messages, and a prose result](docs/images/synthetic.png)
+
 ---
 
 ## Stream components
@@ -169,15 +198,19 @@ Devicon brand marks, and the file-manager link.
 
 | Group | Setting | Effect |
 | --- | --- | --- |
-| Appearance | Accent colour | Follow the Paseo theme, or choose Jade, Violet, Amber, or Rose. |
-| Appearance | Use Paseo fonts | Use Paseo's interface and code fonts on desktop and web. Empty font settings keep your plugin font choices. |
+| Appearance | Accent colour | Follow the Paseo theme, choose Jade, Violet, Amber, or Rose, or mix a custom colour with the hue strip or a hex value. |
+| Appearance | Use Paseo fonts | Use Paseo's interface and code fonts and its Code size on desktop and web. Empty font settings keep your plugin font choices. All monospace text uses one size: Paseo's Code size here, otherwise 12. |
 | Appearance | Interface font | Choose Inter or the system font. A font set in Paseo takes priority when Use Paseo fonts is on. |
-| Appearance | Code glyphs | Use Iosevka with ligatures, or show each symbol separately. A code font set in Paseo takes priority when Use Paseo fonts is on. |
+| Appearance | Code font | Use Iosevka with ligatures, Iosevka with each symbol separate, or any installed font family. A custom font takes priority over Paseo's; otherwise a code font set in Paseo takes priority when Use Paseo fonts is on. |
+| Appearance | Text size | Small (90%), Default, Large (115%), or XL (130%) for every text style the plugin draws, including code and line heights. Icons keep their size. |
 | Appearance | Line spacing | Keep the original spacing with Compact. Balanced adds 15% and Spacious adds 30%. |
 | Appearance | Frosted glass | Blur card backgrounds where supported, or use solid surfaces. |
 | Appearance | Pointer glow | Show a light under the pointer on cards on desktop and web. Reduced motion disables this effect. |
 | Replies | Assistant markdown | Style headings, lists, code, and images, including local files through the daemon. Disable this setting for Mermaid diagrams and Paseo's file-path links. |
 | Replies | Markdown style | Choose Document, Compact, or Terminal. This choice is disabled when Assistant markdown is off. |
+| Replies | Highlight marks | On by default. Show `==text==` in a reply as a marker highlight. Disable this setting to keep the equals signs as typed. |
+| Replies | Mark colour | Choose the highlight wash, or a custom colour. Shown while Highlight marks is on. |
+| Replies | Bold colour | Keep bold text in the surrounding colour, use the accent, or choose a preset or custom colour. |
 | Replies | Long code blocks | Fold reply code blocks over 30 or 60 lines to a 10-line preview. Copy keeps the whole block. |
 | Prompts | Enhanced prompt bubble | Show the plugin's prompt bubble without pasted images. Disable this setting for Paseo's bubble with images. |
 | Prompts | Long prompts | Fold prompts over 15 or 30 lines to an 8-line preview. Paseo's own bubble does not fold. |
@@ -195,7 +228,21 @@ The live preview uses the real prompt, reasoning, tool, reply, and checklist com
 It appears beside the settings at widths of 860 px or more, and above them on narrower screens.
 On desktop and web, the page uses the scroll pane width, up to 1200 px, with a sticky preview column.
 
-**Use Paseo fonts reads unsupported, private host state.** It reads `uiFontFamily` and `monoFontFamily`
+Preferences are saved with the plugin SDK's host settings, so they persist on iOS and Android
+and are shared by every client of the selected host. Only explicit choices are stored; unset
+ones use the defaults. Choices an older version kept in browser storage are imported once, the
+first time a client with browser storage loads the host's settings, and saved host choices win.
+A native client's first load leaves that import available; an edit or **Reset defaults** ends it.
+Until the host's settings load, replies and prompts stay with Paseo's renderer. A save or load
+error appears on the settings page; change the setting again once the host reconnects.
+
+**On iOS and iPadOS, styled replies and prompts cannot be selected by dragging.** Use the **Copy**
+button on the reply, prompt or code block, which copies through the host clipboard and confirms
+with a toast. If copying fails, a dialog shows the full text in a read-only field to select and
+copy by hand. Turning off **Assistant markdown** or **Enhanced prompt bubble** hands that content
+back to Paseo, whose renderer supports drag selection.
+
+**Use Paseo fonts reads unsupported, private host state.** It reads `uiFontFamily`, `monoFontFamily` and `codeFontSize`
 from the `@paseo:app-settings` record in `localStorage`. The plugin SDK does not expose these settings
 in 0.8 or 0.15. A host change can break this feature without warning. It has no effect on native,
 which has no `localStorage`.
@@ -313,6 +360,13 @@ Actual macOS and Linux launchers remain untested.
 Web links with `http`, `https`, or `mailto` use real anchors in replies.
 The host can offer link-address actions. A normal press still uses Paseo's external opener.
 
+Paths a reply mentions in its prose are detected too: an absolute path, a home path, or a relative
+path ending in a file extension draws as a link. Pressing it shows the file in the file manager,
+like a file name on a tool card. On desktop and web, a right click opens the path menu above, whose
+**Open in Default App** asks first under the same rules. A `:55` line selector is accepted and
+stripped when the daemon resolves. Detection is deliberately conservative: half-width and
+full-width punctuation both end a candidate, and a relative token without an extension stays prose.
+
 ## Unmapped output
 
 A tool the plugin has no typed card for, such as `ToolSearch`, is drawn as a generic card. It shows
@@ -376,8 +430,8 @@ timestamp, item}`, and plugin navigation offers only `openSettings`, `openSurfac
     GIF, and WebP but never SVG, so a data-URI SVG renders on web and stays blank on iOS and
     Android. Those marks ship as PNG rasters in `client/components/mark-bitmaps.ts`.
 13. **Settings are host-scoped only.** `defineSettings` rejects any scope other than `host`, so
-    per-workspace or per-agent presentation settings are impossible. This plugin keeps presentation
-    preferences in client storage instead.
+    per-workspace or per-agent presentation settings are impossible. This plugin stores explicit
+    presentation choices in the host's settings; unset choices use the plugin defaults.
 14. **Paseo's chat find cannot reach replaced rows.** Paseo 0.9.1 finds a match by its original
     message id, then waits for a row carrying that id. A transformed row always carries
     `<pluginId>/<itemId>` instead, so Ctrl+F on a styled prompt or reply never reveals the match.
@@ -391,14 +445,16 @@ timestamp, item}`, and plugin navigation offers only `openSettings`, `openSurfac
 beautiful-chat/
   paseo-plugin.json          # Manifest: id and Paseo requirement
   index.client.tsx           # Timeline transformers, renderers, settings screen
-  index.server.ts            # Daemon-side RPCs (file.reveal)
+  index.server.ts            # Daemon-side RPCs (file.reveal) and the presentation settings
   shared/
     contracts.ts             # Data contracts shared by client and server
     file-rpc.ts              # file.reveal contract
+    settings.ts              # Saved presentation preferences (host settings)
   client/
     live-renderers.tsx       # Timeline item to component mapping
     settings-page.tsx        # Settings screen
-    preferences.ts           # Client-side presentation preferences
+    tool-call-data.ts        # Host tool-call payloads reduced to card data
+    preferences.ts           # Presentation preferences backed by host settings
     components/              # Cards, syntax block, glyphs, motion, theme tokens
       mark-bitmaps.ts        # GENERATED PNG rasters of every brand mark
       devicon-data.ts        # Vendor SVG sources, read only by the generator
@@ -412,6 +468,7 @@ beautiful-chat/
 ```bash
 npm install
 npm run typecheck
+npm test
 paseo plugin reload beautiful-chat
 ```
 
@@ -419,10 +476,11 @@ Rebuild the screenshots after a visual change:
 
 ```bash
 esbuild .showcase/showcase.tsx --bundle --outfile=.showcase/showcase.js --jsx=automatic \
+  --define:global=globalThis \
   --alias:react-native=react-native-web \
-  --alias:@getpaseo/plugin/client=./.showcase/shims/plugin-client.tsx \
   --alias:@getpaseo/plugin/client/react-native=./.showcase/shims/plugin-react-native.tsx \
-  --alias:@getpaseo/plugin/client/ui=./.showcase/shims/plugin-react-native.tsx
+  --alias:@getpaseo/plugin/client/ui=./.showcase/shims/plugin-react-native.tsx \
+  --alias:@getpaseo/plugin/client=./.showcase/shims/plugin-client.tsx
 ```
 
 Then serve `.showcase/` and capture each `#shot-*` element.

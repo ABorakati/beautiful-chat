@@ -1,7 +1,8 @@
 import React, { type ReactElement } from "react";
 import { View, Text, StyleSheet, Image } from "react-native";
 import { Icon as HostIcon } from "@getpaseo/plugin/client/ui";
-import { fontMono } from "./theme-tokens";
+import { resolveCodeFonts } from "./theme-tokens";
+import { useEnhancerPreferences } from "../preferences";
 import { MARK_BITMAPS, MONO_MARKS } from "./mark-bitmaps";
 import { unselectable } from "./selection";
 
@@ -57,7 +58,8 @@ function BrandMark({ id, size, color }: { id: string; size: number; color: strin
  */
 export function Icon({ name, size = 13, color = "#94a3b8" }: IconProps): ReactElement {
   const safeColor = color === "currentColor" ? "#94a3b8" : color;
-  const glyph = renderGlyph(name, size, safeColor);
+  const monoFont = resolveCodeFonts(useEnhancerPreferences()).mono;
+  const glyph = renderGlyph(name, size, safeColor, monoFont);
   return (
     <View
       style={{
@@ -74,7 +76,7 @@ export function Icon({ name, size = 13, color = "#94a3b8" }: IconProps): ReactEl
 
 export { Icon as Glyph };
 
-function renderGlyph(name: string, size: number, color: string): ReactElement {
+function renderGlyph(name: string, size: number, color: string, monoFont: string): ReactElement {
   const stroke = Math.max(1.2, size / 8.5);
 
   switch (name) {
@@ -189,7 +191,13 @@ function renderGlyph(name: string, size: number, color: string): ReactElement {
 
     case "Terminal":
       return (
-        <Text style={[styles.mono, { fontSize: Math.max(8.5, size - 2), color }, unselectable]}>
+        <Text
+          style={[
+            styles.mono,
+            { fontFamily: monoFont, fontSize: Math.max(8.5, size - 2), color },
+            unselectable,
+          ]}
+        >
           &gt;_
         </Text>
       );
@@ -294,7 +302,13 @@ function renderGlyph(name: string, size: number, color: string): ReactElement {
       return <HostIcon name="Copy" size={size} color={color} />;
     case "Bot":
       return (
-        <Text style={[styles.mono, { fontSize: size - 2, color, fontWeight: "700" }, unselectable]}>
+        <Text
+          style={[
+            styles.mono,
+            { fontFamily: monoFont, fontSize: size - 2, color, fontWeight: "700" },
+            unselectable,
+          ]}
+        >
           [•]
         </Text>
       );
@@ -403,14 +417,26 @@ function renderGlyph(name: string, size: number, color: string): ReactElement {
       return <HostIcon name="BookOpen" size={size} color={color} />;
     case "FileCode":
       return (
-        <Text style={[styles.mono, { fontSize: size - 3, color, fontWeight: "700" }, unselectable]}>
+        <Text
+          style={[
+            styles.mono,
+            { fontFamily: monoFont, fontSize: size - 3, color, fontWeight: "700" },
+            unselectable,
+          ]}
+        >
           &lt;/&gt;
         </Text>
       );
 
     case "FileDiff":
       return (
-        <Text style={[styles.mono, { fontSize: size - 1, color, fontWeight: "700" }, unselectable]}>
+        <Text
+          style={[
+            styles.mono,
+            { fontFamily: monoFont, fontSize: size - 1, color, fontWeight: "700" },
+            unselectable,
+          ]}
+        >
           ±
         </Text>
       );
@@ -437,7 +463,6 @@ const styles = StyleSheet.create({
     lineHeight: 14,
   },
   mono: {
-    fontFamily: fontMono,
     fontWeight: "600",
     textAlign: "center",
     lineHeight: 13,

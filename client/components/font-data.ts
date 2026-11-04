@@ -10,9 +10,9 @@
 //   OMP Iosevka Code  `calt` retained, which is where Iosevka keeps its
 //                     programming ligatures
 //
-// Only code blocks use the ligature cut. Terminal output, diffs and file paths
-// stay on the plain family, because a shaped `->` or `=>` no longer matches
-// the bytes on disk and that matters when the text is a log or a patch.
+// Only code blocks, and the diffs drawn through them, use the ligature cut.
+// Terminal output, inline code and file paths stay on the plain family,
+// because a shaped `->` or `=>` no longer matches the bytes it stands for.
 //
 // Regenerate with fontTools:
 //   pyftsubset <face>.woff2 --unicodes=U+0020-007E,U+00A0-00FF,U+2018-201F,\

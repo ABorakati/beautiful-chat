@@ -67,16 +67,16 @@ export function ApprovalCard({ request, tokens, onApprove, onDeny }: ApprovalCar
         },
         iconShield: {
           fontFamily: tokens.fontUi,
-          fontSize: 16,
+          fontSize: tokens.fs(16),
         },
         headerTitle: {
           fontFamily: tokens.fontUi,
-          fontSize: 13,
+          fontSize: tokens.fs(13),
           fontWeight: "700",
           color: tokens.foreground,
         },
         toolChip: {
-          fontSize: 11,
+          fontSize: tokens.fs(11),
           fontFamily: tokens.fontUi,
           fontWeight: "600",
           paddingHorizontal: 6,
@@ -95,7 +95,7 @@ export function ApprovalCard({ request, tokens, onApprove, onDeny }: ApprovalCar
         },
         riskText: {
           fontFamily: tokens.fontUi,
-          fontSize: 10,
+          fontSize: tokens.fs(10),
           fontWeight: "700",
           textTransform: "uppercase",
           letterSpacing: 0.5,
@@ -107,8 +107,8 @@ export function ApprovalCard({ request, tokens, onApprove, onDeny }: ApprovalCar
         },
         rationaleText: {
           fontFamily: tokens.fontUi,
-          fontSize: 13,
-          lineHeight: 18 * tokens.leading,
+          fontSize: tokens.fs(13),
+          lineHeight: tokens.fs(18) * tokens.leading,
           color: tokens.foreground,
         },
         metaRow: {
@@ -124,11 +124,11 @@ export function ApprovalCard({ request, tokens, onApprove, onDeny }: ApprovalCar
         },
         metaLabel: {
           fontFamily: tokens.fontUi,
-          fontSize: 11,
+          fontSize: tokens.fs(11),
           color: tokens.foregroundSubtle,
         },
         metaValue: {
-          fontSize: 11,
+          fontSize: tokens.codeFontSize,
           fontFamily: tokens.fontMono,
           color: tokens.foregroundMuted,
         },
@@ -144,14 +144,14 @@ export function ApprovalCard({ request, tokens, onApprove, onDeny }: ApprovalCar
         },
         warningIcon: {
           fontFamily: tokens.fontUi,
-          fontSize: 14,
+          fontSize: tokens.fs(14),
           marginTop: 1,
         },
         warningText: {
           fontFamily: tokens.fontUi,
           flex: 1,
-          fontSize: 12,
-          lineHeight: 16 * tokens.leading,
+          fontSize: tokens.fs(12),
+          lineHeight: tokens.fs(16) * tokens.leading,
           color: tokens.warning,
         },
         resolvedBanner: {
@@ -165,7 +165,7 @@ export function ApprovalCard({ request, tokens, onApprove, onDeny }: ApprovalCar
         },
         resolvedText: {
           fontFamily: tokens.fontUi,
-          fontSize: 12,
+          fontSize: tokens.fs(12),
           fontWeight: "600",
           color: status === "approved" ? tokens.success : tokens.danger,
         },
@@ -193,7 +193,7 @@ export function ApprovalCard({ request, tokens, onApprove, onDeny }: ApprovalCar
         },
         denyText: {
           fontFamily: tokens.fontUi,
-          fontSize: 12,
+          fontSize: tokens.fs(12),
           fontWeight: "600",
           color: tokens.danger,
           ...unselectable,
@@ -206,7 +206,7 @@ export function ApprovalCard({ request, tokens, onApprove, onDeny }: ApprovalCar
         },
         alwaysText: {
           fontFamily: tokens.fontUi,
-          fontSize: 12,
+          fontSize: tokens.fs(12),
           fontWeight: "500",
           color: tokens.foregroundMuted,
           ...unselectable,
@@ -222,13 +222,13 @@ export function ApprovalCard({ request, tokens, onApprove, onDeny }: ApprovalCar
         },
         approveText: {
           fontFamily: tokens.fontUi,
-          fontSize: 12,
+          fontSize: tokens.fs(12),
           fontWeight: "600",
           color: tokens.accentForeground,
           ...unselectable,
         },
         shortcutBadge: {
-          fontSize: 10,
+          fontSize: tokens.fs(10),
           fontFamily: tokens.fontUi,
           paddingHorizontal: 4,
           paddingVertical: 1,
@@ -238,7 +238,7 @@ export function ApprovalCard({ request, tokens, onApprove, onDeny }: ApprovalCar
           ...unselectable,
         },
         denyShortcutBadge: {
-          fontSize: 10,
+          fontSize: tokens.fs(10),
           fontFamily: tokens.fontUi,
           paddingHorizontal: 4,
           paddingVertical: 1,
@@ -249,7 +249,7 @@ export function ApprovalCard({ request, tokens, onApprove, onDeny }: ApprovalCar
         },
         undoText: {
           fontFamily: tokens.fontUi,
-          fontSize: 11,
+          fontSize: tokens.fs(11),
           color: tokens.foregroundMuted,
           textDecorationLine: "underline",
           ...unselectable,

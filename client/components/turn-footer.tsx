@@ -1,6 +1,6 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useMemo } from "react";
 import { View, Text, Pressable, StyleSheet } from "react-native";
-import { copyText } from "@getpaseo/plugin/client/ui";
+import { CopyFallbackDialog, copyTouchTarget, useCopyText } from "./copy-feedback";
 import { Glyph } from "./glyph";
 import { unselectable } from "./selection";
 import { radius } from "./theme-tokens";
@@ -25,8 +25,6 @@ interface AssistantFooterProps {
   at: Date;
   tokens: ExtendedThemeTokens;
 }
-
-const COPIED_MS = 1600;
 
 /**
  * Matches `utils/time.ts:formatMessageTimestamp`: bare time today, weekday and
@@ -54,18 +52,7 @@ export function formatReplyTime(date: Date, now: Date = new Date()): string {
 }
 
 export function AssistantFooter({ text, at, tokens }: AssistantFooterProps) {
-  const [copied, setCopied] = useState(false);
-
-  const handleCopy = useCallback(() => {
-    void copyText(text)
-      .then(() => {
-        setCopied(true);
-        setTimeout(() => setCopied(false), COPIED_MS);
-      })
-      .catch(() => {
-        // Clipboard access can be denied; the label simply does not change.
-      });
-  }, [text]);
+  const { copied, handleCopy, fallbackText, setFallbackText } = useCopyText(text);
 
   const styles = useMemo(
     () =>
@@ -77,6 +64,7 @@ export function AssistantFooter({ text, at, tokens }: AssistantFooterProps) {
           marginTop: 6,
         },
         copyButton: {
+          ...copyTouchTarget,
           // Pull the button's own padding back so its icon starts on the text
           // column, the way the host footer does.
           marginLeft: -6,
@@ -90,14 +78,14 @@ export function AssistantFooter({ text, at, tokens }: AssistantFooterProps) {
         },
         copyLabel: {
           fontFamily: tokens.fontUi,
-          fontSize: 11,
+          fontSize: tokens.fs(11),
           fontWeight: "500",
           color: copied ? tokens.success : tokens.foregroundMuted,
           ...unselectable,
         },
         time: {
           fontFamily: tokens.fontUi,
-          fontSize: 11,
+          fontSize: tokens.fs(11),
           color: tokens.foregroundSubtle,
           ...unselectable,
         },
@@ -111,6 +99,7 @@ export function AssistantFooter({ text, at, tokens }: AssistantFooterProps) {
 
   return (
     <View style={styles.container}>
+      <CopyFallbackDialog text={fallbackText} onClose={() => setFallbackText(null)} tokens={tokens} />
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={copied ? "Reply copied" : "Copy reply"}
