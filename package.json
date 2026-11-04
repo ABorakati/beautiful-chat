@@ -5,6 +5,7 @@
   "description": "Paseo plugin: a beautiful chat for OMP tools, reasoning, prompts, and tasks",
   "license": "MIT",
   "scripts": {
+    "test": "node --test test/*.test.cjs",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

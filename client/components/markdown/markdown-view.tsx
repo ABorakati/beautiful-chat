@@ -125,21 +125,38 @@ const VARIANT_METRICS: Record<MarkdownVariant, VariantMetrics> = {
 };
 
 /**
- * A variant that sets its body in the code face takes Paseo's Code size, with
- * its leading and headings scaled to keep their proportions.
+ * The variant's metrics at the reader's sizes. A variant that sets its body in
+ * the code face takes the code size, with its leading and headings scaled to
+ * keep their proportions; the others follow the text size.
  */
-function variantMetrics(variant: MarkdownVariant, codeFontSize: number): VariantMetrics {
+function variantMetrics(
+  variant: MarkdownVariant,
+  codeFontSize: number,
+  textScale: number,
+): VariantMetrics {
   const base = VARIANT_METRICS[variant];
-  if (!base.mono) return base;
-  const scale = codeFontSize / base.bodySize;
+  // `codeFontSize` already carries the text size, so a code-face body scales
+  // through it; any other body scales by the text size directly.
+  const scale = base.mono ? codeFontSize / base.bodySize : textScale;
+  if (scale === 1 && textScale === 1) return base;
   // Headings snap to half points, like the hand-set sizes they replace.
   const scaled = (size: number) => Math.round(size * scale * 2) / 2;
   const [size1, size2, size3, size4] = base.headingSizes;
   return {
     ...base,
-    bodySize: codeFontSize,
+    bodySize: base.mono ? codeFontSize : scaled(base.bodySize),
     bodyLineHeight: Math.round(base.bodyLineHeight * scale),
     headingSizes: [scaled(size1), scaled(size2), scaled(size3), scaled(size4)],
+    // Spacing follows the text size: a larger body inside the authored gaps
+    // reads cramped, and the column estimates derive from it too.
+    blockGap: base.blockGap * textScale,
+    headingGap: base.headingGap * textScale,
+    markerWidth: base.markerWidth * textScale,
+    itemGap: base.itemGap * textScale,
+    indentStep: base.indentStep * textScale,
+    tableGap: base.tableGap * textScale,
+    columnMin: base.columnMin * textScale,
+    columnMax: base.columnMax * textScale,
   };
 }
 
@@ -227,8 +244,8 @@ interface RenderContext {
 export function MarkdownView({ text, tokens, variant, foldCodeAfter = 0, cwd }: MarkdownViewProps) {
   const blocks = useMemo(() => parseMarkdown(text), [text]);
   const metrics = useMemo(
-    () => variantMetrics(variant, tokens.codeFontSize),
-    [variant, tokens.codeFontSize],
+    () => variantMetrics(variant, tokens.codeFontSize, tokens.textScale),
+    [variant, tokens.codeFontSize, tokens.textScale],
   );
   const styles = useMemo(() => buildStyles(tokens, metrics), [tokens, metrics]);
   const context = useMemo<RenderContext>(

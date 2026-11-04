@@ -45,10 +45,10 @@ export function GitHubBody({ data, tokens, running }: GitHubBodyProps) {
           flexShrink: 1,
           minWidth: 0,
         },
-        value: { fontFamily: tokens.fontUi, fontSize: 11, color: tokens.foregroundMuted },
+        value: { fontFamily: tokens.fontUi, fontSize: tokens.fs(11), color: tokens.foregroundMuted },
         okValue: {
           fontFamily: tokens.fontUi,
-          fontSize: 10,
+          fontSize: tokens.fs(10),
           color: tokens.success,
           backgroundColor: tokens.successBg,
           paddingHorizontal: 6,
@@ -57,7 +57,7 @@ export function GitHubBody({ data, tokens, running }: GitHubBodyProps) {
         },
         badValue: {
           fontFamily: tokens.fontUi,
-          fontSize: 10,
+          fontSize: tokens.fs(10),
           color: tokens.danger,
           backgroundColor: tokens.dangerBg,
           paddingHorizontal: 6,
@@ -84,7 +84,7 @@ export function GitHubBody({ data, tokens, running }: GitHubBodyProps) {
           lineHeight: tokens.codeLineHeight,
           color: tokens.foregroundMuted,
         },
-        note: { fontFamily: tokens.fontUi, fontSize: 11, color: tokens.foregroundSubtle },
+        note: { fontFamily: tokens.fontUi, fontSize: tokens.fs(11), color: tokens.foregroundSubtle },
         toggle: {
           flexDirection: "row",
           alignItems: "center",
@@ -97,7 +97,7 @@ export function GitHubBody({ data, tokens, running }: GitHubBodyProps) {
         },
         toggleLabel: {
           fontFamily: tokens.fontUi,
-          fontSize: 10,
+          fontSize: tokens.fs(10),
           color: tokens.foregroundMuted,
           ...unselectable,
         },

@@ -114,7 +114,7 @@ export function NoticeCallout({ data, tokens }: NoticeCalloutProps): React.React
         },
         badgeLabel: {
           fontFamily: tokens.fontUi,
-          fontSize: 10,
+          fontSize: tokens.fs(10),
           fontWeight: "700",
           textTransform: "uppercase",
           letterSpacing: 0.5,
@@ -128,8 +128,8 @@ export function NoticeCallout({ data, tokens }: NoticeCalloutProps): React.React
           flex: 1,
           minWidth: 0,
           fontFamily: tokens.fontUi,
-          fontSize: 12,
-          lineHeight: 18 * tokens.leading,
+          fontSize: tokens.fs(12),
+          lineHeight: tokens.fs(18) * tokens.leading,
           color: tokens.foreground,
         },
         dataBlock: {

@@ -62,7 +62,7 @@ export function StatusLine({
         },
         title: {
           fontFamily: tokens.fontUi,
-          fontSize: 12,
+          fontSize: tokens.fs(12),
           fontWeight: "600",
           color: tokens.foreground,
           flexShrink: 1,
@@ -85,18 +85,18 @@ export function StatusLine({
         },
         chipLabel: {
           fontFamily: tokens.fontUi,
-          fontSize: 10,
+          fontSize: tokens.fs(10),
           color: tokens.foregroundSubtle,
           textTransform: "lowercase",
         },
         chipValue: {
           fontFamily: tokens.fontMono,
-          fontSize: 10.5,
+          fontSize: tokens.fs(10.5),
           color: tokens.foregroundMuted,
         },
         detail: {
           fontFamily: tokens.fontUi,
-          fontSize: 11,
+          fontSize: tokens.fs(11),
           color: tokens.foregroundSubtle,
           flexShrink: 1,
         },

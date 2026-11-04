@@ -4,6 +4,7 @@ import type { PluginServerContext } from "@getpaseo/plugin/server";
 import { revealPathRpc, stripSelector } from "./shared/file-rpc";
 import { type HighlightLine, type HighlightToken, highlightRpc } from "./shared/highlight-rpc";
 import { imageRpc } from "./shared/image-rpc";
+import { presentationSettings } from "./shared/settings";
 import { openWithShell, revealWithShell } from "./server/path-launcher";
 import { enforceOpenPolicy, inspectOpenTarget, resolveOpenPath } from "./server/path-open-policy";
 
@@ -411,6 +412,8 @@ function tokenize(
 }
 
 export default function contribute(server: PluginServerContext) {
+  server.registerSettings(presentationSettings);
+
   server.handle(revealPathRpc, async (input, { paseo }) => {
     const empty = { revealed: null, launch: null, policy: null };
     const requested = input.open ? input.path : stripSelector(input.path);

@@ -1160,7 +1160,7 @@ function useHubStyles(tokens: ExtendedThemeTokens): HubStyles {
         },
         opBadge: {
           fontFamily: tokens.fontUi,
-          fontSize: 10,
+          fontSize: tokens.fs(10),
           fontWeight: "700",
           textTransform: "uppercase",
           letterSpacing: 0.5,
@@ -1172,7 +1172,7 @@ function useHubStyles(tokens: ExtendedThemeTokens): HubStyles {
         },
         headline: {
           fontFamily: tokens.fontUi,
-          fontSize: 12,
+          fontSize: tokens.fs(12),
           fontWeight: "600",
           color: tokens.foreground,
           flexShrink: 1,
@@ -1219,7 +1219,7 @@ function useHubStyles(tokens: ExtendedThemeTokens): HubStyles {
 
         chip: {
           fontFamily: tokens.fontUi,
-          fontSize: 10,
+          fontSize: tokens.fs(10),
           fontWeight: "700",
           textTransform: "uppercase",
           letterSpacing: 0.4,
@@ -1230,7 +1230,7 @@ function useHubStyles(tokens: ExtendedThemeTokens): HubStyles {
         },
         chipPlain: {
           fontFamily: tokens.fontUi,
-          fontSize: 10,
+          fontSize: tokens.fs(10),
           fontWeight: "600",
           paddingHorizontal: 6,
           paddingVertical: 2,
@@ -1248,19 +1248,19 @@ function useHubStyles(tokens: ExtendedThemeTokens): HubStyles {
         },
         sender: {
           fontFamily: tokens.fontUi,
-          fontSize: 12,
+          fontSize: tokens.fs(12),
           fontWeight: "700",
           color: tokens.accent,
         },
         figure: {
           fontFamily: tokens.fontUi,
-          fontSize: 11,
+          fontSize: tokens.fs(11),
           color: tokens.foregroundSubtle,
           flexShrink: 1,
         },
         marker: {
           fontFamily: tokens.fontUi,
-          fontSize: 10,
+          fontSize: tokens.fs(10),
           fontWeight: "700",
           textTransform: "uppercase",
           letterSpacing: 0.4,
@@ -1269,7 +1269,7 @@ function useHubStyles(tokens: ExtendedThemeTokens): HubStyles {
         },
         sectionLabel: {
           fontFamily: tokens.fontUi,
-          fontSize: 10,
+          fontSize: tokens.fs(10),
           fontWeight: "700",
           textTransform: "uppercase",
           letterSpacing: 0.5,
@@ -1278,30 +1278,30 @@ function useHubStyles(tokens: ExtendedThemeTokens): HubStyles {
         },
         errorText: {
           fontFamily: tokens.fontUi,
-          fontSize: 11,
-          lineHeight: 16 * tokens.leading,
+          fontSize: tokens.fs(11),
+          lineHeight: tokens.fs(16) * tokens.leading,
           color: tokens.danger,
           flexShrink: 1,
         },
         bodyText: {
           fontFamily: tokens.fontUi,
-          fontSize: 12,
-          lineHeight: 18 * tokens.leading,
+          fontSize: tokens.fs(12),
+          lineHeight: tokens.fs(18) * tokens.leading,
           color: tokens.foreground,
           flex: 1,
           minWidth: 0,
         },
         subtleBody: {
           fontFamily: tokens.fontUi,
-          fontSize: 11,
-          lineHeight: 16 * tokens.leading,
+          fontSize: tokens.fs(11),
+          lineHeight: tokens.fs(16) * tokens.leading,
           color: tokens.foregroundMuted,
           flex: 1,
           minWidth: 0,
         },
         placeholder: {
           fontFamily: tokens.fontUi,
-          fontSize: 11,
+          fontSize: tokens.fs(11),
           fontStyle: "italic",
           color: tokens.foregroundSubtle,
           ...unselectable,
@@ -1329,8 +1329,8 @@ function useHubStyles(tokens: ExtendedThemeTokens): HubStyles {
         },
         replyText: {
           fontFamily: tokens.fontUi,
-          fontSize: 12,
-          lineHeight: 18 * tokens.leading,
+          fontSize: tokens.fs(12),
+          lineHeight: tokens.fs(18) * tokens.leading,
           color: tokens.foregroundMuted,
         },
         codeBlock: {
@@ -1349,7 +1349,7 @@ function useHubStyles(tokens: ExtendedThemeTokens): HubStyles {
         },
         moreLabel: {
           fontFamily: tokens.fontUi,
-          fontSize: 11,
+          fontSize: tokens.fs(11),
           fontWeight: "500",
           color: tokens.accent,
           ...unselectable,

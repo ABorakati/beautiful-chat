@@ -9,7 +9,12 @@ import { installHostNoticeStyle } from "./client/components/host-notice";
 import { installChatFind } from "./client/components/chat-find";
 import { installPathLinkMenu } from "./client/components/path-link-menu";
 import { extractPromptImages } from "./client/prompt-images";
-import { getEnhancerPreferences, subscribeEnhancerPreferences } from "./client/preferences";
+import {
+  areEnhancerPreferencesReady,
+  getEnhancerPreferences,
+  initializeEnhancerPreferences,
+  subscribeEnhancerPreferences,
+} from "./client/preferences";
 import { hostFoldsToolCalls, observeHostToolFolding } from "./client/host-settings";
 import {
   checklistKey,
@@ -33,6 +38,8 @@ function toJsonValue(value: unknown): JsonValue {
 }
 
 export default function contribute(client: PluginClientContext) {
+  // Preferences live on the host, so iOS and Android keep them too.
+  void initializeEnhancerPreferences((contract, input) => client.rpc(contract, input));
   // Install the bundled faces before any surface paints.
   const removeFonts = embedFonts();
   const removeFrost = installFrostedGlass();
@@ -207,7 +214,7 @@ export default function contribute(client: PluginClientContext) {
     Component: LiveTodoRenderer,
   });
 
-  const removeUserTransformer = client.addTimelineTransformer({
+  const registerUserTransformer = () => client.addTimelineTransformer({
     id: "omp-enhanced-user-message",
     query: { itemType: "user_message" },
     transform({ item }) {
@@ -215,7 +222,11 @@ export default function contribute(client: PluginClientContext) {
       // The host strips images while mapping the stream item, so an enhanced
       // bubble would silently swallow a pasted screenshot. The preference lets
       // the reader trade the bubble for the host's image previews.
-      if (!getEnhancerPreferences().enhancedUserBubble) return undefined;
+      // Until the host's saved choice is read, the prompt stays Paseo's, so a
+      // reader who turned the bubble off never sees it flash in.
+      if (!areEnhancerPreferencesReady() || !getEnhancerPreferences().enhancedUserBubble) {
+        return undefined;
+      }
       const images = extractPromptImages(item);
       // Replacing the item drops whatever this renderer does not carry, so a
       // message with an attachment it cannot show is left to the host.
@@ -251,15 +262,15 @@ export default function contribute(client: PluginClientContext) {
     Component: LiveUserMessageRenderer,
   });
 
-  // The assistant's reply. The preference is read inside `transform` so a
-  // change takes effect on the next message without a plugin reload, and a
-  // reply the plugin should not own is left to the host.
-  const removeAssistantTransformer = client.addTimelineTransformer({
+  // The assistant's reply. A reply the plugin should not own is left to the host.
+  const registerAssistantTransformer = () => client.addTimelineTransformer({
     id: "omp-enhanced-assistant",
     query: { itemType: "assistant_message" },
     transform({ item }) {
       if (item.type !== "assistant_message") return undefined;
-      if (!getEnhancerPreferences().assistantMarkdown) return undefined;
+      if (!areEnhancerPreferencesReady() || !getEnhancerPreferences().assistantMarkdown) {
+        return undefined;
+      }
       if (!item.text.trim()) return undefined;
       return {
         items: [
@@ -272,6 +283,27 @@ export default function contribute(client: PluginClientContext) {
         ],
       };
     },
+  });
+
+  let removeUserTransformer = registerUserTransformer();
+  let removeAssistantTransformer = registerAssistantTransformer();
+  // Paseo caches transformed rows per transformer. Re-register both when the
+  // saved preferences arrive or either choice changes, so rows already drawn
+  // follow it too.
+  const messageOwnership = () => {
+    const preferences = getEnhancerPreferences();
+    const ready = areEnhancerPreferencesReady();
+    return `${ready}:${ready && preferences.enhancedUserBubble}:${ready && preferences.assistantMarkdown}`;
+  };
+  let ownership = messageOwnership();
+  const stopOwnershipWatch = subscribeEnhancerPreferences(() => {
+    const next = messageOwnership();
+    if (next === ownership) return;
+    ownership = next;
+    removeUserTransformer();
+    removeAssistantTransformer();
+    removeUserTransformer = registerUserTransformer();
+    removeAssistantTransformer = registerAssistantTransformer();
   });
 
   const removeAssistantRenderer = client.addTimelineRenderer({
@@ -337,6 +369,7 @@ export default function contribute(client: PluginClientContext) {
     clearTimeout(todoRefresh);
     removeTodoTransformer();
     removeTodoRenderer();
+    stopOwnershipWatch();
     removeUserTransformer();
     removeUserRenderer();
     removeAssistantTransformer();

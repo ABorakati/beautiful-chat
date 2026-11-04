@@ -202,6 +202,7 @@ Devicon brand marks, and the file-manager link.
 | Appearance | Use Paseo fonts | Use Paseo's interface and code fonts and its Code size on desktop and web. Empty font settings keep your plugin font choices. All monospace text uses one size: Paseo's Code size here, otherwise 12. |
 | Appearance | Interface font | Choose Inter or the system font. A font set in Paseo takes priority when Use Paseo fonts is on. |
 | Appearance | Code font | Use Iosevka with ligatures, Iosevka with each symbol separate, or any installed font family. A custom font takes priority over Paseo's; otherwise a code font set in Paseo takes priority when Use Paseo fonts is on. |
+| Appearance | Text size | Small (90%), Default, Large (115%), or XL (130%) for every text style the plugin draws, including code and line heights. Icons keep their size. |
 | Appearance | Line spacing | Keep the original spacing with Compact. Balanced adds 15% and Spacious adds 30%. |
 | Appearance | Frosted glass | Blur card backgrounds where supported, or use solid surfaces. |
 | Appearance | Pointer glow | Show a light under the pointer on cards on desktop and web. Reduced motion disables this effect. |
@@ -223,6 +224,20 @@ Devicon brand marks, and the file-manager link.
 The live preview uses the real prompt, reasoning, tool, reply, and checklist components with sample data.
 It appears beside the settings at widths of 860 px or more, and above them on narrower screens.
 On desktop and web, the page uses the scroll pane width, up to 1200 px, with a sticky preview column.
+
+Preferences are saved with the plugin SDK's host settings, so they persist on iOS and Android
+and are shared by every client of the selected host. Only explicit choices are stored; unset
+ones use the defaults. Choices an older version kept in browser storage are imported once, the
+first time a client with browser storage loads the host's settings, and saved host choices win.
+A native client's first load leaves that import available; an edit or **Reset defaults** ends it.
+Until the host's settings load, replies and prompts stay with Paseo's renderer. A save or load
+error appears on the settings page; change the setting again once the host reconnects.
+
+**On iOS and iPadOS, styled replies and prompts cannot be selected by dragging.** Use the **Copy**
+button on the reply, prompt or code block, which copies through the host clipboard and confirms
+with a toast. If copying fails, a dialog shows the full text in a read-only field to select and
+copy by hand. Turning off **Assistant markdown** or **Enhanced prompt bubble** hands that content
+back to Paseo, whose renderer supports drag selection.
 
 **Use Paseo fonts reads unsupported, private host state.** It reads `uiFontFamily`, `monoFontFamily` and `codeFontSize`
 from the `@paseo:app-settings` record in `localStorage`. The plugin SDK does not expose these settings
@@ -405,8 +420,8 @@ timestamp, item}`, and plugin navigation offers only `openSettings`, `openSurfac
     GIF, and WebP but never SVG, so a data-URI SVG renders on web and stays blank on iOS and
     Android. Those marks ship as PNG rasters in `client/components/mark-bitmaps.ts`.
 13. **Settings are host-scoped only.** `defineSettings` rejects any scope other than `host`, so
-    per-workspace or per-agent presentation settings are impossible. This plugin keeps presentation
-    preferences in client storage instead.
+    per-workspace or per-agent presentation settings are impossible. This plugin stores explicit
+    presentation choices in the host's settings; unset choices use the plugin defaults.
 14. **Paseo's chat find cannot reach replaced rows.** Paseo 0.9.1 finds a match by its original
     message id, then waits for a row carrying that id. A transformed row always carries
     `<pluginId>/<itemId>` instead, so Ctrl+F on a styled prompt or reply never reveals the match.
@@ -420,14 +435,16 @@ timestamp, item}`, and plugin navigation offers only `openSettings`, `openSurfac
 beautiful-chat/
   paseo-plugin.json          # Manifest: id and Paseo requirement
   index.client.tsx           # Timeline transformers, renderers, settings screen
-  index.server.ts            # Daemon-side RPCs (file.reveal)
+  index.server.ts            # Daemon-side RPCs (file.reveal) and the presentation settings
   shared/
     contracts.ts             # Data contracts shared by client and server
     file-rpc.ts              # file.reveal contract
+    settings.ts              # Saved presentation preferences (host settings)
   client/
     live-renderers.tsx       # Timeline item to component mapping
     settings-page.tsx        # Settings screen
-    preferences.ts           # Client-side presentation preferences
+    tool-call-data.ts        # Host tool-call payloads reduced to card data
+    preferences.ts           # Presentation preferences backed by host settings
     components/              # Cards, syntax block, glyphs, motion, theme tokens
       mark-bitmaps.ts        # GENERATED PNG rasters of every brand mark
       devicon-data.ts        # Vendor SVG sources, read only by the generator
@@ -441,6 +458,7 @@ beautiful-chat/
 ```bash
 npm install
 npm run typecheck
+npm test
 paseo plugin reload beautiful-chat
 ```
 

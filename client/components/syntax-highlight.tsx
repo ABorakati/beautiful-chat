@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useMemo } from "react";
 import { View, Text, Pressable, StyleSheet } from "react-native";
 import type { ViewProps } from "react-native";
+import { CopyFallbackDialog, copyTouchTarget, useCopyText } from "./copy-feedback";
 import { Glyph } from "./glyph";
 import { frosted } from "./frosted";
 import { surfaceProps } from "./view-props";
@@ -483,16 +484,9 @@ export function SyntaxHighlightBlock({
   onRevealFile,
   foldAfterLines = 0,
 }: SyntaxHighlightProps) {
-  const [copied, setCopied] = useState(false);
+  // The host owns the clipboard on every platform; navigator only exists on web.
+  const { copied, handleCopy, fallbackText, setFallbackText } = useCopyText(code);
   const [unfolded, setUnfolded] = useState(false);
-
-  const handleCopy = useCallback(() => {
-    if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
-      navigator.clipboard.writeText(code).catch(() => {});
-    }
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1800);
-  }, [code]);
 
   const lines = useMemo(() => code.trimEnd().split("\n"), [code]);
   // A diff is a diff whatever the label says, and everything below reads this
@@ -568,8 +562,8 @@ export function SyntaxHighlightBlock({
           minWidth: 0,
         },
         filename: {
-          fontSize: 12,
-          lineHeight: 17 * tokens.leading,
+          fontSize: tokens.fs(12),
+          lineHeight: tokens.fs(17) * tokens.leading,
           fontFamily: tokens.fontUi,
           fontWeight: "600",
           color: tokens.foregroundMuted,
@@ -586,7 +580,7 @@ export function SyntaxHighlightBlock({
         },
         langBadge: {
           fontFamily: tokens.fontUi,
-          fontSize: 11,
+          fontSize: tokens.fs(11),
           fontWeight: "500",
           textTransform: "uppercase",
           letterSpacing: 0.5,
@@ -597,6 +591,7 @@ export function SyntaxHighlightBlock({
           borderRadius: radius.chip,
         },
         copyButton: {
+          ...copyTouchTarget,
           flexDirection: "row",
           alignItems: "center",
           gap: 4,
@@ -608,7 +603,7 @@ export function SyntaxHighlightBlock({
         },
         copyText: {
           fontFamily: tokens.fontUi,
-          fontSize: 11,
+          fontSize: tokens.fs(11),
           color: copied ? tokens.success : tokens.foregroundMuted,
           fontWeight: "500",
           ...unselectable,
@@ -650,7 +645,7 @@ export function SyntaxHighlightBlock({
         },
         foldText: {
           fontFamily: tokens.fontUi,
-          fontSize: 12,
+          fontSize: tokens.fs(12),
           fontWeight: "500",
           color: tokens.foregroundMuted,
           ...unselectable,
@@ -663,6 +658,7 @@ export function SyntaxHighlightBlock({
     // No pointer glow here: a code block is an inner surface, and lighting it
     // separately from the card that holds it reads as two hovers at once.
     <View {...surfaceProps(frosted, selectionSurface)} style={styles.container}>
+      <CopyFallbackDialog text={fallbackText} onClose={() => setFallbackText(null)} tokens={tokens} />
       {(filename || language) && (
         <View style={styles.header}>
           <View style={styles.headerLeft}>
@@ -695,7 +691,12 @@ export function SyntaxHighlightBlock({
               </Text>
             ) : null}
           </View>
-          <Pressable onPress={handleCopy} style={styles.copyButton}>
+          <Pressable
+            onPress={handleCopy}
+            accessibilityRole="button"
+            accessibilityLabel={copied ? "Code copied" : "Copy code"}
+            style={styles.copyButton}
+          >
             <Pop trigger={copied}>
               <Glyph
                 name={copied ? "Check" : "Copy"}

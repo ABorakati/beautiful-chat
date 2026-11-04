@@ -107,15 +107,15 @@ export function AdvisorCallout({ data, tokens }: AdvisorCalloutProps): React.Rea
         },
         chipText: {
           fontFamily: tokens.fontUi,
-          fontSize: 10,
+          fontSize: tokens.fs(10),
           fontWeight: "700",
           textTransform: "uppercase",
           letterSpacing: 0.3,
         },
         noteText: {
           fontFamily: tokens.fontUi,
-          fontSize: 12,
-          lineHeight: 18,
+          fontSize: tokens.fs(12),
+          lineHeight: tokens.fs(18),
           color: tokens.foreground,
         },
         more: {
@@ -127,7 +127,7 @@ export function AdvisorCallout({ data, tokens }: AdvisorCalloutProps): React.Rea
         },
         moreText: {
           fontFamily: tokens.fontUi,
-          fontSize: 11,
+          fontSize: tokens.fs(11),
           fontWeight: "600",
           color: tokens.accent,
         },

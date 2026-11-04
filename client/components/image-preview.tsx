@@ -76,7 +76,7 @@ export function ImagePreview({ path, file, tokens, onReveal }: ImagePreviewProps
         chips: { flexDirection: "row", alignItems: "center", gap: 6, flexShrink: 0 },
         chip: {
           fontFamily: tokens.fontUi,
-          fontSize: 10,
+          fontSize: tokens.fs(10),
           color: tokens.foregroundSubtle,
           backgroundColor: tokens.surface1,
           paddingHorizontal: 6,
@@ -95,7 +95,7 @@ export function ImagePreview({ path, file, tokens, onReveal }: ImagePreviewProps
         },
         eyeLabel: {
           fontFamily: tokens.fontUi,
-          fontSize: 10,
+          fontSize: tokens.fs(10),
           fontWeight: "500",
           color: tokens.foregroundMuted,
           ...unselectable,
@@ -113,7 +113,7 @@ export function ImagePreview({ path, file, tokens, onReveal }: ImagePreviewProps
         image: { width: "100%", height: MAX_HEIGHT },
         message: {
           fontFamily: tokens.fontUi,
-          fontSize: 11.5,
+          fontSize: tokens.fs(11.5),
           color: tokens.foregroundMuted,
           padding: 10,
         },

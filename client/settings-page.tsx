@@ -14,10 +14,12 @@ import {
 import { SettingsPreview } from "./settings-preview";
 import {
   ACCENT_PRESETS,
+  TEXT_SIZE_OPTIONS,
   COLLAPSIBLE_TOOL_GROUPS,
   resetEnhancerPreferences,
   updateEnhancerPreferences,
   useEnhancerPreferences,
+  useEnhancerPreferencesError,
   type AccentPreset,
   type CodeFoldLimit,
   type CodeFontPreference,
@@ -339,9 +341,19 @@ function Section({ title, tokens, children }: { title: string; tokens: ExtendedT
   );
 }
 
+/** The listed size nearest a saved scale, so an out-of-list value still selects one. */
+function textSizeValue(scale: number): (typeof TEXT_SIZE_OPTIONS)[number]["value"] {
+  let nearest: (typeof TEXT_SIZE_OPTIONS)[number] = TEXT_SIZE_OPTIONS[1];
+  for (const option of TEXT_SIZE_OPTIONS) {
+    if (Math.abs(Number(option.value) - scale) < Math.abs(Number(nearest.value) - scale)) nearest = option;
+  }
+  return nearest.value;
+}
+
 /** Paseo mounts this page under the host's Plugin settings. */
 export function BeautifulChatSettingsPage({ theme }: PluginSurfaceProps) {
   const preferences = useEnhancerPreferences();
+  const storageError = useEnhancerPreferencesError();
   const tokens = useThemeTokens(theme.colors, preferences);
   const [wide, setWide] = useState(false);
   const rootRef = useRef<View>(null);
@@ -379,8 +391,14 @@ export function BeautifulChatSettingsPage({ theme }: PluginSurfaceProps) {
           Beautiful Chat
         </Text>
         <Text style={[styles.description, { color: tokens.foregroundMuted, fontFamily: tokens.fontUi }]}>
-          Changes save automatically. Reload the chat to update items already on screen.
+          Changes save automatically on the selected host and apply to all its clients. Reload the
+          chat to update items already on screen.
         </Text>
+        {storageError ? (
+          <Text accessibilityRole="alert" style={[styles.description, { color: tokens.danger, fontFamily: tokens.fontUi }]}>
+            Preferences could not be saved or loaded: {storageError} Change the setting again to retry.
+          </Text>
+        ) : null}
       </View>
       <View style={[styles.columns, wide && styles.wideColumns]}>
         {!wide ? preview : null}
@@ -483,6 +501,14 @@ export function BeautifulChatSettingsPage({ theme }: PluginSurfaceProps) {
                 ]}
               />
             ) : null}
+            <ChoiceRow<(typeof TEXT_SIZE_OPTIONS)[number]["value"]>
+              title="Text size"
+              description="Scale the text the plugin draws, from replies and code to callouts and badges."
+              value={textSizeValue(preferences.textScale)}
+              options={TEXT_SIZE_OPTIONS}
+              onChange={(textScale) => updateEnhancerPreferences({ textScale: Number(textScale) })}
+              tokens={tokens}
+            />
             <ChoiceRow<LineSpacingPreference>
               title="Line spacing"
               description="Compact keeps the original spacing. Balanced adds 15% and Spacious adds 30%."
@@ -525,7 +551,7 @@ export function BeautifulChatSettingsPage({ theme }: PluginSurfaceProps) {
           <Section title="Replies" tokens={tokens}>
             <ToggleRow
               title="Assistant markdown"
-              description="Style headings, lists, code, and images. Disable this setting for Mermaid diagrams and Paseo's file-path links."
+              description="Style headings, lists, code, and images. Disable this setting for Mermaid diagrams and Paseo's file-path links. On iOS, styled replies cannot be selected by dragging; use Copy, or disable this setting."
               value={preferences.assistantMarkdown}
               onChange={(assistantMarkdown) => updateEnhancerPreferences({ assistantMarkdown })}
               tokens={tokens}
@@ -561,7 +587,7 @@ export function BeautifulChatSettingsPage({ theme }: PluginSurfaceProps) {
           <Section title="Prompts" tokens={tokens}>
             <ToggleRow
               title="Enhanced prompt bubble"
-              description="Paseo removes pasted images before the plugin receives a prompt. Disable this setting for Paseo's bubble with images."
+              description="Paseo removes pasted images before the plugin receives a prompt. Disable this setting for Paseo's bubble with images. On iOS, the bubble cannot be selected by dragging; use Copy, or disable this setting."
               value={preferences.enhancedUserBubble}
               onChange={(enhancedUserBubble) => updateEnhancerPreferences({ enhancedUserBubble })}
               tokens={tokens}

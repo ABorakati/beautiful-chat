@@ -85,11 +85,19 @@ export interface ExtendedThemeTokens {
   fontUi: string;
   /**
    * The size of every monospace surface: Paseo's Code size when Use Paseo
-   * fonts is on, otherwise 12.
+   * fonts is on, otherwise 12, scaled by the text size.
    */
   codeFontSize: number;
   /** The 1.5 leading Paseo gives its own code, scaled by the line spacing. */
   codeLineHeight: number;
+  /** The reader's text size multiplier; 1 renders the authored sizes. */
+  textScale: number;
+  /**
+   * Scales a font size or text line height by `textScale`, snapped to half
+   * points so derived line-height math stays tidy. Layout dimensions (chip
+   * heights, gutters) do not go through this: only what a reader reads.
+   */
+  fs(base: number): number;
 
   // Surfaces
   surface0: string;
@@ -235,6 +243,9 @@ export function buildThemeTokens(
   const edge = isDark ? 0.22 : 0.18;
   const host = preferences.hostFonts ? readHostFonts() : {};
   const leading = LINE_SPACING[preferences.lineSpacing];
+  const textScale = preferences.textScale;
+  const fs = (base: number) => Math.round(base * textScale * 2) / 2;
+  const scaledCodeFontSize = fs(codeFontSize);
 
   return {
     isDark,
@@ -242,8 +253,10 @@ export function buildThemeTokens(
     fontMono: codeFonts.mono,
     fontCode: codeFonts.code,
     fontUi: host.ui ?? (preferences.uiFont === "system" ? "System" : fontUi),
-    codeFontSize,
-    codeLineHeight: Math.round(codeFontSize * 1.5 * leading),
+    codeFontSize: scaledCodeFontSize,
+    codeLineHeight: Math.round(scaledCodeFontSize * 1.5 * leading),
+    textScale,
+    fs,
 
     surface0: colors.surface0,
     surface1: withAlpha(fg, isDark ? 0.03 : 0.025),

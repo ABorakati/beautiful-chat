@@ -1,4 +1,12 @@
 import { useSyncExternalStore } from "react";
+import type { PluginClientContext } from "@getpaseo/plugin/client";
+import {
+  preferenceOverridesSchema,
+  presentationSettings,
+  presentationSettingsRpc,
+  type PresentationSettings,
+  type PreferenceOverrides,
+} from "../shared/settings";
 
 export const ACCENT_PRESETS = {
   host: undefined,
@@ -35,12 +43,22 @@ export type PromptFoldLimit = (typeof PROMPT_FOLD_LIMITS)[number];
 export const COLLAPSE_LINE_LIMITS = [0, 10, 20, 50] as const;
 export type CollapseLineLimit = (typeof COLLAPSE_LINE_LIMITS)[number];
 
+/** Multiplier applied to every font size the plugin draws. */
+export const TEXT_SIZE_OPTIONS = [
+  { value: "0.9", label: "Small" },
+  { value: "1", label: "Default" },
+  { value: "1.15", label: "Large" },
+  { value: "1.3", label: "XL" },
+] as const;
+
 export interface EnhancerPreferences {
   accent: AccentPreset;
   uiFont: UiFontPreference;
   codeFont: CodeFontPreference;
   /** A CSS font-family, read only when `codeFont` is `custom`. */
   customCodeFont: string;
+  /** Scales every text style the plugin renders; 1 is the authored size. */
+  textScale: number;
   frostedGlass: boolean;
   /** Uses Paseo's interface and code fonts on web and desktop. */
   hostFonts: boolean;
@@ -105,6 +123,7 @@ export const DEFAULT_PREFERENCES: Readonly<EnhancerPreferences> = {
   uiFont: "inter",
   codeFont: "code",
   customCodeFont: "",
+  textScale: 1,
   frostedGlass: true,
   hostFonts: false,
   lineSpacing: "compact",
@@ -125,6 +144,16 @@ export const DEFAULT_PREFERENCES: Readonly<EnhancerPreferences> = {
   promptFoldLimit: 15,
 };
 
+// Fails to compile when a preference is missing from the saved schema, or
+// the schema holds one the client does not know.
+const schemaCoversEveryPreference: [
+  Exclude<keyof EnhancerPreferences, keyof PreferenceOverrides>,
+  Exclude<keyof PreferenceOverrides, keyof EnhancerPreferences>,
+] extends [never, never]
+  ? true
+  : never = true;
+void schemaCoversEveryPreference;
+
 const listeners = new Set<() => void>();
 
 function storage(): Storage | undefined {
@@ -132,117 +161,46 @@ function storage(): Storage | undefined {
   return candidate.localStorage;
 }
 
-function isAccentPreset(value: unknown): value is AccentPreset {
-  return typeof value === "string" && value in ACCENT_PRESETS;
-}
-
-function isCollapseLineLimit(value: unknown): value is CollapseLineLimit {
-  return COLLAPSE_LINE_LIMITS.includes(value as CollapseLineLimit);
-}
-
-function isCodeFoldLimit(value: unknown): value is CodeFoldLimit {
-  return CODE_FOLD_LIMITS.includes(value as CodeFoldLimit);
-}
-
-function isPromptFoldLimit(value: unknown): value is PromptFoldLimit {
-  return PROMPT_FOLD_LIMITS.includes(value as PromptFoldLimit);
-}
-
-function collapseToolsFrom(value: unknown): CollapsibleToolGroup[] {
-  if (!Array.isArray(value)) return [...DEFAULT_PREFERENCES.collapseTools];
-  return COLLAPSIBLE_TOOL_GROUPS.filter((group) => value.includes(group));
-}
-
-function isCodeFontPreference(value: unknown): value is CodeFontPreference {
-  return value === "code" || value === "plain" || value === "custom";
-}
-
-function loadPreferences(): EnhancerPreferences {
+/**
+ * The choices an older version kept in this browser, read once so they move
+ * to the host. Undefined when this client has no browser storage at all.
+ */
+function loadLegacyPreferences(): PreferenceOverrides | undefined {
   try {
-    const stored = storage()?.getItem(STORAGE_KEY);
-    if (!stored) return { ...DEFAULT_PREFERENCES };
-    const candidate = JSON.parse(stored) as Partial<EnhancerPreferences>;
-    return {
-      accent: isAccentPreset(candidate.accent) ? candidate.accent : DEFAULT_PREFERENCES.accent,
-      uiFont: candidate.uiFont === "system" ? "system" : DEFAULT_PREFERENCES.uiFont,
-      codeFont: isCodeFontPreference(candidate.codeFont)
-        ? candidate.codeFont
-        : DEFAULT_PREFERENCES.codeFont,
-      customCodeFont:
-        typeof candidate.customCodeFont === "string"
-          ? candidate.customCodeFont
-          : DEFAULT_PREFERENCES.customCodeFont,
-      hostFonts:
-        typeof candidate.hostFonts === "boolean" ? candidate.hostFonts : DEFAULT_PREFERENCES.hostFonts,
-      lineSpacing:
-        candidate.lineSpacing === "balanced" || candidate.lineSpacing === "spacious"
-          ? candidate.lineSpacing
-          : DEFAULT_PREFERENCES.lineSpacing,
-      frostedGlass:
-        typeof candidate.frostedGlass === "boolean"
-          ? candidate.frostedGlass
-          : DEFAULT_PREFERENCES.frostedGlass,
-      pointerGlow:
-        typeof candidate.pointerGlow === "boolean"
-          ? candidate.pointerGlow
-          : DEFAULT_PREFERENCES.pointerGlow,
-      enhancedUserBubble:
-        typeof candidate.enhancedUserBubble === "boolean"
-          ? candidate.enhancedUserBubble
-          : DEFAULT_PREFERENCES.enhancedUserBubble,
-      selectionActions:
-        typeof candidate.selectionActions === "boolean"
-          ? candidate.selectionActions
-          : DEFAULT_PREFERENCES.selectionActions,
-      confirmOpenPath:
-        typeof candidate.confirmOpenPath === "boolean"
-          ? candidate.confirmOpenPath
-          : DEFAULT_PREFERENCES.confirmOpenPath,
-      assistantMarkdown:
-        typeof candidate.assistantMarkdown === "boolean"
-          ? candidate.assistantMarkdown
-          : DEFAULT_PREFERENCES.assistantMarkdown,
-      markdownVariant:
-        candidate.markdownVariant === "compact" || candidate.markdownVariant === "terminal"
-          ? candidate.markdownVariant
-          : DEFAULT_PREFERENCES.markdownVariant,
-      paseoToolFolding:
-        typeof candidate.paseoToolFolding === "boolean"
-          ? candidate.paseoToolFolding
-          : DEFAULT_PREFERENCES.paseoToolFolding,
-      overviewReasoning:
-        typeof candidate.overviewReasoning === "boolean"
-          ? candidate.overviewReasoning
-          : DEFAULT_PREFERENCES.overviewReasoning,
-      collapseTools: collapseToolsFrom(candidate.collapseTools),
-      collapseLineLimit: isCollapseLineLimit(candidate.collapseLineLimit)
-        ? candidate.collapseLineLimit
-        : DEFAULT_PREFERENCES.collapseLineLimit,
-      expandWhileRunning:
-        typeof candidate.expandWhileRunning === "boolean"
-          ? candidate.expandWhileRunning
-          : DEFAULT_PREFERENCES.expandWhileRunning,
-      collapseReasoning:
-        typeof candidate.collapseReasoning === "boolean"
-          ? candidate.collapseReasoning
-          : DEFAULT_PREFERENCES.collapseReasoning,
-      liveChecklist:
-        typeof candidate.liveChecklist === "boolean"
-          ? candidate.liveChecklist
-          : DEFAULT_PREFERENCES.liveChecklist,
-      codeFoldLimit: isCodeFoldLimit(candidate.codeFoldLimit)
-        ? candidate.codeFoldLimit
-        : DEFAULT_PREFERENCES.codeFoldLimit,
-      promptFoldLimit: isPromptFoldLimit(candidate.promptFoldLimit)
-        ? candidate.promptFoldLimit
-        : DEFAULT_PREFERENCES.promptFoldLimit,
-    };
+    const legacyStorage = storage();
+    if (!legacyStorage) return undefined;
+    const stored = legacyStorage.getItem(STORAGE_KEY);
+    if (!stored) return {};
+    const candidate: unknown = JSON.parse(stored);
+    if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) return {};
+    // Each field is checked on its own, so one bad value costs only itself.
+    const valid: Record<string, unknown> = {};
+    for (const [key, schema] of Object.entries(preferenceOverridesSchema.shape)) {
+      // Text size never existed in browser storage, so it is not imported.
+      if (key === "textScale") continue;
+      const parsed = schema.safeParse((candidate as Record<string, unknown>)[key]);
+      if (parsed.success && parsed.data !== undefined) valid[key] = parsed.data;
+    }
+    return preferenceOverridesSchema.parse(valid);
   } catch {
-    return { ...DEFAULT_PREFERENCES };
+    return {};
   }
 }
 
-let preferences = loadPreferences();
+/** Overrides on top of the defaults; a field the host does not hold keeps its default. */
+function withDefaults(overrides: PreferenceOverrides): EnhancerPreferences {
+  const defined = Object.fromEntries(
+    Object.entries(overrides).filter(([, value]) => value !== undefined),
+  ) as Partial<EnhancerPreferences>;
+  return { ...DEFAULT_PREFERENCES, collapseTools: [...DEFAULT_PREFERENCES.collapseTools], ...defined };
+}
+
+let preferences: EnhancerPreferences = withDefaults({});
+let invoke: PluginClientContext["rpc"] | undefined;
+let pending = Promise.resolve();
+let localVersion = 0;
+let ready = false;
+let storageError: string | null = null;
 
 function publish(): void {
   for (const listener of listeners) listener();
@@ -252,24 +210,92 @@ export function getEnhancerPreferences(): EnhancerPreferences {
   return preferences;
 }
 
-export function updateEnhancerPreferences(update: Partial<EnhancerPreferences>): void {
-  preferences = { ...preferences, ...update };
-  try {
-    storage()?.setItem(STORAGE_KEY, JSON.stringify(preferences));
-  } catch {
-    // Browser storage can be disabled. Keep the change alive for this session.
-  }
-  publish();
+/** True once the host's saved preferences have been read. */
+export function areEnhancerPreferencesReady(): boolean {
+  return ready;
 }
 
-export function resetEnhancerPreferences(): void {
-  preferences = { ...DEFAULT_PREFERENCES };
-  try {
-    storage()?.removeItem(STORAGE_KEY);
-  } catch {
-    // Keep the default session value if storage is unavailable.
+export function getEnhancerPreferencesError(): string | null {
+  return storageError;
+}
+
+async function savePreferences(
+  change: (values: PresentationSettings) => PresentationSettings,
+): Promise<PresentationSettings> {
+  if (!invoke) throw new Error("Preference storage is not connected to a host.");
+  // Every write merges against a fresh revision. Retry bounded conflicts so
+  // another client's unrelated changes are kept rather than overwritten.
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const result = await invoke(presentationSettingsRpc.read, {});
+    if (result.status !== "ready") throw new Error(result.error);
+    const current = presentationSettings.schema.parse(result.values);
+    const next = change(current);
+    if (next === current) return current;
+    const saved = await invoke(presentationSettingsRpc.write, {
+      revision: result.revision,
+      values: next,
+    });
+    if (saved.status === "saved") return presentationSettings.schema.parse(saved.values);
+    if (saved.status === "invalid") throw new Error(saved.error);
   }
+  throw new Error("Preferences changed in another client. Please try again.");
+}
+
+function enqueue(change: (values: PresentationSettings) => PresentationSettings): Promise<void> {
+  const version = localVersion;
+  pending = pending
+    .then(async () => {
+      const values = await savePreferences(change);
+      // A queued edit must not be replaced by an older read or write response.
+      if (version === localVersion) preferences = withDefaults(values.preferences);
+      ready = true;
+      storageError = null;
+      publish();
+    })
+    .catch((error: unknown) => {
+      storageError = error instanceof Error ? error.message : String(error);
+      publish();
+    });
+  return pending;
+}
+
+/**
+ * Reads the host's saved preferences, moving this browser's older choices to
+ * the host the first time. Until the read answers, the defaults apply and the
+ * reply and prompt transformers leave rows to Paseo.
+ */
+export function initializeEnhancerPreferences(rpc: PluginClientContext["rpc"]): Promise<void> {
+  invoke = rpc;
+  return enqueue((values) => {
+    if (values.legacyMigrated) return values;
+    const legacy = loadLegacyPreferences();
+    // Native has no browser storage. Leave migration available until a web
+    // client connects, or an edit or reset makes the host's copy authoritative.
+    if (legacy === undefined) return values;
+    // Choices already on the host win over legacy values, and the marker stops
+    // stale browser storage from restoring settings after an edit or reset.
+    return { preferences: { ...legacy, ...values.preferences }, legacyMigrated: true };
+  });
+}
+
+export function updateEnhancerPreferences(update: Partial<EnhancerPreferences>): Promise<void> {
+  const patch = preferenceOverridesSchema.parse(update);
+  localVersion += 1;
+  preferences = withDefaults({ ...preferences, ...patch });
   publish();
+  return enqueue((values) => ({
+    preferences: { ...values.preferences, ...patch },
+    legacyMigrated: true,
+  }));
+}
+
+export function resetEnhancerPreferences(): Promise<void> {
+  localVersion += 1;
+  preferences = withDefaults({});
+  publish();
+  // A settings reset would also clear the migration marker, so write an empty
+  // set of explicit choices instead.
+  return enqueue(() => ({ preferences: {}, legacyMigrated: true }));
 }
 
 export function subscribeEnhancerPreferences(listener: () => void): () => void {
@@ -284,5 +310,13 @@ export function useEnhancerPreferences(): EnhancerPreferences {
     subscribeEnhancerPreferences,
     getEnhancerPreferences,
     getEnhancerPreferences,
+  );
+}
+
+export function useEnhancerPreferencesError(): string | null {
+  return useSyncExternalStore(
+    subscribeEnhancerPreferences,
+    getEnhancerPreferencesError,
+    getEnhancerPreferencesError,
   );
 }

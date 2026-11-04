@@ -1,6 +1,6 @@
-import React, { useMemo, useCallback, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { View, Text, Pressable, StyleSheet, Image } from "react-native";
-import { copyText } from "@getpaseo/plugin/client/ui";
+import { CopyFallbackDialog, copyTouchTarget, useCopyText } from "./copy-feedback";
 import { Glyph } from "./glyph";
 import { Pop } from "./motion";
 import { radius } from "./theme-tokens";
@@ -104,20 +104,10 @@ export function UserMessage({
   pending = false,
   foldAfterLines = 0,
 }: UserMessageProps) {
-  const [copied, setCopied] = useState(false);
+  const { copied, handleCopy, fallbackText, setFallbackText } = useCopyText(text);
   const [unfolded, setUnfolded] = useState(false);
   const foldable = foldAfterLines > 0 && estimatedLines(text) > foldAfterLines;
   const folded = foldable && !unfolded;
-  const handleCopy = useCallback(() => {
-    // The host owns clipboard access. Reaching for navigator directly would
-    // only work on web and would bypass its permission handling.
-    copyText(text)
-      .then(() => {
-        setCopied(true);
-        setTimeout(() => setCopied(false), 1600);
-      })
-      .catch(() => {});
-  }, [text]);
 
   const styles = useMemo(
     () =>
@@ -148,25 +138,26 @@ export function UserMessage({
         },
         label: {
           fontFamily: tokens.fontUi,
-          fontSize: 10,
+          fontSize: tokens.fs(10),
           fontWeight: "600",
           letterSpacing: 0.4,
           textTransform: "uppercase",
           color: tokens.userTextMuted,
         },
         copyButton: {
+          ...copyTouchTarget,
           paddingHorizontal: 4,
           paddingVertical: 2,
         },
         clock: {
           fontFamily: tokens.fontUi,
-          fontSize: 10,
+          fontSize: tokens.fs(10),
           color: tokens.userTextMuted,
         },
         text: {
           fontFamily: tokens.fontUi,
-          fontSize: 13.5,
-          lineHeight: 20 * tokens.leading,
+          fontSize: tokens.fs(13.5),
+          lineHeight: tokens.fs(20) * tokens.leading,
           color: tokens.userText,
         },
         foldButton: {
@@ -179,7 +170,7 @@ export function UserMessage({
         },
         foldText: {
           fontFamily: tokens.fontUi,
-          fontSize: 12,
+          fontSize: tokens.fs(12),
           fontWeight: "600",
           color: tokens.userTextMuted,
         },
@@ -208,12 +199,12 @@ export function UserMessage({
         },
         usageKey: {
           fontFamily: tokens.fontUi,
-          fontSize: 10,
+          fontSize: tokens.fs(10),
           color: tokens.userTextMuted,
         },
         usageValue: {
           fontFamily: tokens.fontUi,
-          fontSize: 11,
+          fontSize: tokens.fs(11),
           fontWeight: "600",
           color: tokens.userText,
         },
@@ -223,6 +214,7 @@ export function UserMessage({
 
   return (
     <View {...selectionSurface} style={styles.container}>
+      <CopyFallbackDialog text={fallbackText} onClose={() => setFallbackText(null)} tokens={tokens} />
       <View style={styles.body}>
         <View style={styles.metaRow}>
           <Text selectable style={styles.label}>
