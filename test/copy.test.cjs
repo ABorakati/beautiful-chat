@@ -171,8 +171,10 @@ for (const variant of ["document", "compact", "terminal"]) {
 
 // Local file links and paths: one press handler, never a browser or OS sink.
 test("localPathFromHref: local targets become paths, every other scheme stays out", () => {
-  const { localPathFromHref, fileUrlToPath } = harness("client/components/markdown/markdown-view.tsx", "MarkdownView", async () => {}).load("client/components/open-link.ts");
+  const { localPathFromHref, fileUrlToPath } = harness("client/components/markdown/markdown-view.tsx", "MarkdownView", async () => {}).load("client/components/markdown/parse.ts");
   const cases = [
+    ["notes", null],
+    ["docs/", "docs/"],
     ["/abs/foo.ts", "/abs/foo.ts"],
     ["src/foo.ts:12", "src/foo.ts:12"],
     ["README.md", "README.md"],

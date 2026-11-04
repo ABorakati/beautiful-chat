@@ -812,44 +812,64 @@ export function isFilePathToken(raw: string): string | null {
 }
 
 /**
- * The local path a link target names, or null for anything else.
- *
- * A `file://` URL is decoded to its path, as the daemon writes one: each
- * segment percent-encoded, `localhost` or no host, and a Windows drive after
- * the third slash. A target with no scheme counts when it is rooted (a drive,
- * a home prefix or a slash) or ends in a file extension. Every other scheme,
- * `javascript:` and `sandbox:` included, is null: such a target is not a file
- * the daemon can find.
+ * The local path a `file://` URL names, or null. Parsed by hand, not with
+ * `URL`, because React Native's `URL` does not implement `pathname`. A host
+ * other than `localhost` is a UNC share.
+ */
+export function fileUrlToPath(href: string): string | null {
+  const match = /^file:\/\/([^/?#]*)([^?#]*)/i.exec(href.trim());
+  if (match === null) return null;
+  let path: string;
+  try {
+    path = decodeURIComponent(match[2] || "/");
+  } catch {
+    // A stray `%` that is not an escape: keep the raw path, and let the
+    // daemon report that it cannot find it.
+    path = match[2] || "/";
+  }
+  if (path === "/") return null;
+  const host = match[1] ?? "";
+  if (host && host.toLowerCase() !== "localhost") return `//${host}${path}`;
+  // `file:///C:/x` carries a leading slash that is not part of the path.
+  return /^\/[a-zA-Z]:[\\/]/.test(path) ? path.slice(1) : path;
+}
+
+const SCHEME = /^[a-zA-Z][a-zA-Z\d+.-]*:/;
+
+/**
+ * The local path a markdown link or image points at, or null when the target
+ * is a web URL, a heading anchor or any other scheme. `file://` URLs, absolute,
+ * home and relative paths count; `javascript:`, `data:`, `sandbox:` and the
+ * like never do, so a press on them stays with `openLink`, which drops them.
+ * A `#L12` selector is kept for the daemon to strip; any other fragment is a
+ * heading, not a file.
  */
 export function localPathFromHref(href: string): string | null {
   const target = href.trim();
-  if (target === "") return null;
-  if (/[\u0000-\u001f<>]/.test(target)) return null;
-
-  if (/^file:\/\//i.test(target)) {
-    const rest = target.slice("file://".length).replace(/[?#].*$/, "");
-    const slash = rest.indexOf("/");
-    const host = slash === -1 ? rest : rest.slice(0, slash);
-    let path = slash === -1 ? "" : rest.slice(slash);
-    try {
-      path = decodeURIComponent(path);
-    } catch {
-      // A stray `%` that is not an escape: keep the raw path, and let the
-      // daemon report that it cannot find it.
-    }
-    if (path === "" || path === "/") return null;
-    if (host !== "" && host.toLowerCase() !== "localhost") return `//${host}${path}`;
-    // `file:///C:/x` carries a leading slash that is not part of the path.
-    return /^\/[A-Za-z]:[\\/]/.test(path) ? path.slice(1) : path;
+  if (/^file:/i.test(target)) return fileUrlToPath(target);
+  // A Windows drive reads like a one-letter scheme, so test it first.
+  const drive = /^[a-zA-Z]:[\\/]/.test(target);
+  if (!drive && SCHEME.test(target)) return null;
+  // `//host/x` is a scheme-relative web URL in markdown.
+  if (target === "" || /^[#?]/.test(target) || target.startsWith("//")) return null;
+  // eslint-disable-next-line no-control-regex
+  if (/[\u0000-\u001f\u007f<>]/.test(target)) return null;
+  const hash = target.indexOf("#");
+  let path = hash >= 0 && !/#L\d+(?:-L?\d+)?$/.test(target) ? target.slice(0, hash) : target;
+  path = path.replace(/\?.*$/, "");
+  try {
+    path = decodeURI(path);
+  } catch {
+    // A stray `%` is part of the name.
   }
-
-  const windows = /^[A-Za-z]:[\\/]/.test(target);
-  if (!windows && /^[A-Za-z][A-Za-z0-9+.-]*:/.test(target)) return null;
-  if (target.startsWith("#") || target.startsWith("?")) return null;
-  const rooted = windows || /^(?:\/|~[\\/])/.test(target);
-  const bare = target.replace(/:\d+(?::\d+)?$/, "");
-  if (!rooted && !/\.[A-Za-z0-9]{1,8}$/.test(bare)) return null;
-  return target;
+  if (path === "") return null;
+  // A bare word ("notes") is a heading or a page name, not a file: a relative
+  // target needs a folder or an extension. A `:12` selector is not one.
+  const rooted = drive || /^(?:[\\/]|~[\\/])/.test(path);
+  if (!rooted && !/[\\/]/.test(path) && !/\.[A-Za-z0-9]{1,8}$/.test(path.replace(/:\d+(?::\d+)?$/, ""))) {
+    return null;
+  }
+  return path;
 }
 
 /**

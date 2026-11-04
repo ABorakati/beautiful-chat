@@ -6,7 +6,7 @@ import { radius, withAlpha, type ExtendedThemeTokens } from "../theme-tokens";
 import { selectableSurface, unselectable } from "../selection";
 import { selectionSurface } from "../selection-actions";
 import { SyntaxHighlightBlock } from "../syntax-highlight";
-import { isAllowedLink, localPathFromHref, openLink } from "../open-link";
+import { isAllowedLink, openLink } from "../open-link";
 import { pathTargetProps } from "../path-link-menu";
 import {
   parseMarkdown,
@@ -677,31 +677,20 @@ function renderInline(
           return pathLink(key, linkPath, renderInline(span.spans, styles, key, onRevealFile), styles.link, onRevealFile);
         }
         // A Text keeps the link inside the paragraph's selection range.
-        // Safe web anchors let Paseo offer Copy Link Address.
-        // Other targets carry a path mark, not an href that can navigate.
+        // Safe web anchors let Paseo offer Copy Link Address. Any other
+        // target gets no href and no path mark, so it cannot navigate.
         const web = Platform.OS === "web";
         const allowed = isAllowedLink(span.href);
-        // A `file://` URL or a local path is never opened: a press shows it in
-        // the file manager, as a path in prose does.
-        const localPath = allowed ? null : localPathFromHref(span.href);
         return (
           <Text
             key={key}
             selectable
             accessibilityRole="link"
-            {...(localPath !== null && onRevealFile
-              ? { accessibilityLabel: `Show ${localPath} in the file manager` }
-              : {})}
             {...(web && allowed ? ({ href: span.href } as object) : {})}
-            {...(web && !allowed
-              ? ({ dataSet: { bcpath: span.href } } as unknown as TextProps)
-              : {})}
             onPress={(event) => {
               if (web) event.preventDefault();
-              if (localPath !== null) {
-                onRevealFile?.(localPath);
-                return;
-              }
+              // A local path without a press handler, `file:` and `javascript:`
+              // all stop here: `openLink` drops anything but web schemes.
               openLink(span.href);
             }}
             style={styles.link}

@@ -121,5 +121,6 @@ test("render: a file URL or local path link reveals the file and never reaches t
   for (const link of links) link.props.onPress(event);
   assert.deepEqual(revealed, ["/tmp/a b.txt", "docs/notes.md"]);
   assert.deepEqual(h.opened, ["https://e.com"], "only the web link reaches the opener");
-  assert.equal(links[0].props.accessibilityLabel, "Show /tmp/a b.txt in the file manager");
+  // The wording depends on the platform (a reveal on web, a path sheet on native).
+  assert.match(links[0].props.accessibilityLabel, /\/tmp\/a b\.txt/);
 });
