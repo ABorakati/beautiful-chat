@@ -33,6 +33,11 @@ import {
 
 type JsonValue = boolean | null | number | string | JsonValue[] | { [key: string]: JsonValue };
 
+// A generative-UI fence open line (```ui / ```app, up to three spaces of
+// indent, backticks or tildes), mirroring the fence languages generative-UI
+// plugins accept. Matched case-insensitively; `uix`-style suffixes don't count.
+const GENUI_FENCE = /(?:^|\n) {0,3}(?:`{3,}|~{3,})[ \t]*(?:ui|app)(?![A-Za-z0-9_-])/i;
+
 function toJsonValue(value: unknown): JsonValue {
   return value as JsonValue;
 }
@@ -272,6 +277,11 @@ export default function contribute(client: PluginClientContext) {
         return undefined;
       }
       if (!item.text.trim()) return undefined;
+      // A generative-UI fence (```ui / ```app) is rendered by its own plugin's
+      // timeline items; claiming the message here would strand it as a plain
+      // code block, because Paseo applies only the first transformer that
+      // claims a message.
+      if (GENUI_FENCE.test(item.text)) return undefined;
       return {
         items: [
           {
