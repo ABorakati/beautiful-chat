@@ -9,6 +9,7 @@ import { installHostNoticeStyle } from "./client/components/host-notice";
 import { installChatFind } from "./client/components/chat-find";
 import { installPathLinkMenu } from "./client/components/path-link-menu";
 import { extractPromptImages } from "./client/prompt-images";
+import { parseMarkdown } from "./client/components/markdown/parse";
 import {
   areEnhancerPreferencesReady,
   getEnhancerPreferences,
@@ -272,6 +273,12 @@ export default function contribute(client: PluginClientContext) {
         return undefined;
       }
       if (!item.text.trim()) return undefined;
+      // Paseo renders Mermaid diagrams; the plugin's code renderer only shows their source.
+      if (parseMarkdown(item.text).some(block =>
+        block.kind === "code" && block.language.toLowerCase() === "mermaid"
+      )) {
+        return undefined;
+      }
       return {
         items: [
           {
