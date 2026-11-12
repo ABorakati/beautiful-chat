@@ -1,6 +1,6 @@
-import React, { useMemo } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { View, Text, ScrollView, StyleSheet, Platform } from "react-native";
-import type { TextProps, TextStyle, ViewStyle } from "react-native";
+import type { LayoutChangeEvent, TextProps, TextStyle, ViewStyle } from "react-native";
 import { Glyph } from "../glyph";
 import { radius, withAlpha, type ExtendedThemeTokens } from "../theme-tokens";
 import { selectableSurface, unselectable } from "../selection";
@@ -202,6 +202,15 @@ const MARKER_GAP = 6;
 // sits against the column edge.
 const CODE_CHIP_PADDING = 4;
 const TABLE_CELL_PADDING = 6;
+// The table container's right inset, counted when columns share the card width.
+const TABLE_END_PADDING = 6;
+// Below this, a fitted column can no longer hold a readable word; scroll instead.
+const MIN_FIT_COLUMN = 44;
+
+// Long paths and identifiers have no spaces to break at. The web renderer
+// accepts the CSS property directly; native wraps at character boundaries.
+const tableCellWrapStyle =
+  Platform.OS === "web" ? ({ wordBreak: "break-word" } as unknown as TextStyle) : undefined;
 
 /** Every style the renderer draws with, so callers never infer it from the builder. */
 interface MarkdownStyles {
@@ -478,32 +487,114 @@ function renderItem(
 }
 
 /**
- * A table keeps its own columns and scrolls sideways when the widest row beats
- * the card: clipping would hide the cell that carries the answer.
+ * A table normally fits the card: columns keep their measured widths while
+ * they fit, and share the remaining width once the widest row would beat it.
+ * Only a card too narrow for readable columns falls back to sideways scrolling.
  */
 function renderTable(block: MdTableBlock, key: string, context: RenderContext): React.ReactNode {
+  return <MarkdownTable key={key} block={block} context={context} tableKey={key} />;
+}
+
+function MarkdownTable({
+  block,
+  context,
+  tableKey,
+}: {
+  block: MdTableBlock;
+  context: RenderContext;
+  tableKey: string;
+}) {
   const { styles, metrics } = context;
-  const widths = columnWidths(block, metrics);
+  const naturalWidths = useMemo(() => columnWidths(block, metrics), [block, metrics]);
+  const [availableWidth, setAvailableWidth] = useState<number | null>(null);
+  const handleLayout = useCallback((event: LayoutChangeEvent) => {
+    const width = event.nativeEvent.layout.width;
+    if (width <= 0) return;
+    setAvailableWidth((current) =>
+      current !== null && Math.abs(current - width) < 0.5 ? current : width,
+    );
+  }, []);
+  const { widths, scroll } = useMemo(
+    () => fitColumnWidths(naturalWidths, availableWidth, metrics.tableGap),
+    [naturalWidths, availableWidth, metrics.tableGap],
+  );
 
   return (
-    <ScrollView
-      key={key}
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      style={styles.tableScroll}
-      contentContainerStyle={styles.tableContent}
-    >
-      <View>
-        <View style={styles.tableHeaderRow}>
-          {block.header.map((cell, column) => {
-            const cellKey = `${key}h${column}`;
+    <View style={styles.tableScroll} onLayout={handleLayout}>
+      {scroll ? (
+        // A card narrower than one readable column per cell keeps the authored
+        // widths and scrolls instead of crushing every column to a few glyphs.
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.tableContent}
+        >
+          <TableGrid
+            block={block}
+            context={context}
+            tableKey={tableKey}
+            widths={widths}
+          />
+        </ScrollView>
+      ) : (
+        <View style={styles.tableContent}>
+          <TableGrid
+            block={block}
+            context={context}
+            tableKey={tableKey}
+            widths={widths}
+          />
+        </View>
+      )}
+    </View>
+  );
+}
+
+function TableGrid({
+  block,
+  context,
+  tableKey,
+  widths,
+}: {
+  block: MdTableBlock;
+  context: RenderContext;
+  tableKey: string;
+  widths: number[];
+}) {
+  const { styles, metrics } = context;
+  return (
+    <View>
+      <View style={styles.tableHeaderRow}>
+        {block.header.map((cell, column) => {
+          const cellKey = `${tableKey}h${column}`;
+          return (
+            <Text
+              key={cellKey}
+              selectable
+              style={[
+                styles.tableHeaderCell,
+                styles[ALIGN_KEYS[block.align[column] ?? "left"]],
+                tableCellWrapStyle,
+                { width: widths[column] ?? metrics.columnMin },
+              ]}
+            >
+              {renderInline(cell, styles, cellKey, context.onRevealFile)}
+            </Text>
+          );
+        })}
+      </View>
+      {block.rows.map((row, rowIndex) => (
+        <View key={`${tableKey}r${rowIndex}`} style={styles.tableRow}>
+          {row.map((cell, column) => {
+            const cellKey = `${tableKey}r${rowIndex}c${column}`;
             return (
               <Text
                 key={cellKey}
                 selectable
                 style={[
-                  styles.tableHeaderCell,
+                  styles.tableCell,
                   styles[ALIGN_KEYS[block.align[column] ?? "left"]],
+                  tableCellWrapStyle,
                   { width: widths[column] ?? metrics.columnMin },
                 ]}
               >
@@ -512,28 +603,8 @@ function renderTable(block: MdTableBlock, key: string, context: RenderContext): 
             );
           })}
         </View>
-        {block.rows.map((row, rowIndex) => (
-          <View key={`${key}r${rowIndex}`} style={styles.tableRow}>
-            {row.map((cell, column) => {
-              const cellKey = `${key}r${rowIndex}c${column}`;
-              return (
-                <Text
-                  key={cellKey}
-                  selectable
-                  style={[
-                    styles.tableCell,
-                    styles[ALIGN_KEYS[block.align[column] ?? "left"]],
-                    { width: widths[column] ?? metrics.columnMin },
-                  ]}
-                >
-                  {renderInline(cell, styles, cellKey, context.onRevealFile)}
-                </Text>
-              );
-            })}
-          </View>
-        ))}
-      </View>
-    </ScrollView>
+      ))}
+    </View>
   );
 }
 
@@ -729,6 +800,56 @@ function columnWidths(block: MdTableBlock, metrics: VariantMetrics): number[] {
   return widths;
 }
 
+interface FittedColumns {
+  widths: number[];
+  scroll: boolean;
+}
+
+/**
+ * Shrinks measured column widths to the card. Columns narrower than their fair
+ * share keep their natural width; the rest split what remains, so one long
+ * code cell cannot squeeze all the others to a glyph.
+ */
+function fitColumnWidths(
+  natural: number[],
+  availableWidth: number | null,
+  gap: number,
+): FittedColumns {
+  const columns = natural.length;
+  if (availableWidth === null || columns === 0) return { widths: natural, scroll: false };
+  const usable = availableWidth - TABLE_END_PADDING - gap * (columns - 1);
+  if (usable <= 0) return { widths: natural, scroll: true };
+  const total = natural.reduce((sum, width) => sum + width, 0);
+  if (total <= usable) return { widths: natural, scroll: false };
+  if (usable / columns < MIN_FIT_COLUMN) return { widths: natural, scroll: true };
+
+  const widths = natural.slice();
+  const fixed = new Set<number>();
+  const order = natural
+    .map((_, index) => index)
+    .sort((a, b) => (natural[a] ?? 0) - (natural[b] ?? 0));
+  let remaining = usable;
+  let remainingColumns = columns;
+  for (const index of order) {
+    const naturalWidth = natural[index] ?? 0;
+    const fairShare = remaining / remainingColumns;
+    if (naturalWidth <= fairShare) {
+      widths[index] = naturalWidth;
+      fixed.add(index);
+      remaining -= naturalWidth;
+      remainingColumns -= 1;
+      continue;
+    }
+    const share = remaining / remainingColumns;
+    for (const rest of order) {
+      if (!fixed.has(rest)) widths[rest] = share;
+    }
+    break;
+  }
+  // Whole pixels keep the grid from spilling past the measured width.
+  return { widths: widths.map((width) => Math.floor(width)), scroll: false };
+}
+
 function buildStyles(tokens: ExtendedThemeTokens, base: VariantMetrics): MarkdownStyles {
   const metrics = { ...base, bodyLineHeight: base.bodyLineHeight * tokens.leading };
   const bodyFont = metrics.mono ? tokens.fontMono : tokens.fontUi;
@@ -879,9 +1000,10 @@ function buildStyles(tokens: ExtendedThemeTokens, base: VariantMetrics): Markdow
     },
     tableScroll: {
       alignSelf: "stretch",
+      width: "100%",
     },
     tableContent: {
-      paddingRight: 6,
+      paddingRight: TABLE_END_PADDING,
     },
     tableHeaderRow: {
       flexDirection: "row",
@@ -903,6 +1025,7 @@ function buildStyles(tokens: ExtendedThemeTokens, base: VariantMetrics): Markdow
       paddingHorizontal: TABLE_CELL_PADDING,
       fontWeight: "700",
       color: tokens.foreground,
+      flexShrink: 0,
     },
     tableCell: {
       fontFamily: bodyFont,
@@ -910,6 +1033,7 @@ function buildStyles(tokens: ExtendedThemeTokens, base: VariantMetrics): Markdow
       lineHeight: metrics.bodyLineHeight - 2,
       paddingHorizontal: TABLE_CELL_PADDING,
       color: tokens.foreground,
+      flexShrink: 0,
     },
     cellLeft: { textAlign: "left" },
     cellCenter: { textAlign: "center" },
