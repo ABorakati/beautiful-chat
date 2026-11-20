@@ -11,6 +11,7 @@ import { UserMessage } from "./components/user-message";
 import { radius, type ExtendedThemeTokens } from "./components/theme-tokens";
 import type { EnhancerPreferences } from "./preferences";
 import { toolCardStartsExpanded } from "./tool-collapse";
+import { reasoningStartsExpanded, useHostAutoExpandReasoning } from "./reasoning-collapse";
 import type { ReasoningTraceData, TaskListData, ToolCalloutData } from "../shared/contracts";
 
 const REASONING: ReasoningTraceData = {
@@ -72,6 +73,8 @@ export function SettingsPreview({
   useSelectionActions(tokens, preferences.selectionActions);
   usePointerGlow(preferences.pointerGlow);
   useFrostedGlass(preferences.frostedGlass);
+  const hostAutoExpand = useHostAutoExpandReasoning();
+  const reasoningExpanded = reasoningStartsExpanded(preferences, hostAutoExpand);
   const textStyle = { color: tokens.foregroundMuted, fontFamily: tokens.fontUi };
   return (
     <View testID="settings-preview" style={[styles.panel, { borderColor: tokens.borderSubtle, backgroundColor: tokens.surface1 }]}>
@@ -90,10 +93,10 @@ export function SettingsPreview({
           <Text style={[styles.note, textStyle]}>Paseo draws the prompt with its own bubble.</Text>
         )}
         <ReasoningTrace
-          key={`reasoning-${preferences.collapseReasoning}`}
+          key={`reasoning-${reasoningExpanded}`}
           data={REASONING}
           tokens={tokens}
-          defaultExpanded={!preferences.collapseReasoning}
+          defaultExpanded={reasoningExpanded}
         />
         <ToolCallout
           key={`tool-${preferences.expandWhileRunning}-${preferences.collapseTools.join(",")}-${preferences.collapseLineLimit}`}

@@ -817,7 +817,7 @@ export function BeautifulChatSettingsPage({ theme }: PluginSurfaceProps) {
             )}
             <ToggleRow
               title="Fold reasoning summaries"
-              description="Fold reasoning summaries after completion. Disable this setting to keep every summary open."
+              description="Start reasoning summaries collapsed, including while streaming, unless Paseo's Auto-expand reasoning is enabled. Disable this setting to keep every summary open."
               value={preferences.collapseReasoning}
               onChange={(collapseReasoning) => updateEnhancerPreferences({ collapseReasoning })}
               tokens={tokens}

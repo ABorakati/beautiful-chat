@@ -138,7 +138,7 @@ export interface EnhancerPreferences {
    * folds when the call finishes. Off leaves running cards to the rules above.
    */
   expandWhileRunning: boolean;
-  /** A reasoning summary folds once the thought completes. Off keeps every summary open. */
+  /** Start reasoning summaries collapsed, including while streaming, unless Paseo's Auto-expand reasoning is on. Off keeps every summary open. */
   collapseReasoning: boolean;
   /** Show only the newest checklist where it arrived. Off shows every update. */
   liveChecklist: boolean;

@@ -6,6 +6,7 @@ export interface HostAppSettings {
   chatDisplay?: unknown;
   toolCallDetailLevel?: unknown;
   compactToolCalls?: unknown;
+  autoExpandReasoning?: unknown;
 }
 
 export function readHostAppSettings(): HostAppSettings {
@@ -28,6 +29,16 @@ export function hostFoldsToolCalls(): boolean {
   const level = settings.toolCallDetailLevel;
   if (level === "overview" || level === "concise") return true;
   return level === undefined && settings.compactToolCalls === true;
+}
+
+/**
+ * Paseo's "Auto-expand reasoning" setting from `@paseo:app-settings`.
+ * Returns `null` when unavailable (native clients without localStorage,
+ * missing key, invalid JSON, or a non-boolean value).
+ */
+export function hostAutoExpandReasoning(): boolean | null {
+  const value = readHostAppSettings().autoExpandReasoning;
+  return typeof value === "boolean" ? value : null;
 }
 
 export function observeHostToolFolding(check: () => void): () => void {

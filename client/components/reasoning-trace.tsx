@@ -8,7 +8,7 @@ import { Glow, Rotate } from "./motion";
 import { PulseDot } from "./pulse-dot";
 import { Breathe } from "./breathe";
 import { radius } from "./theme-tokens";
-import { selectableSurface } from "./selection";
+import { selectableSurface, unselectable } from "./selection";
 import { selectionSurface } from "./selection-actions";
 import type { ExtendedThemeTokens } from "./theme-tokens";
 import type { ReasoningTraceData, ReasoningStep } from "../../shared/contracts";
@@ -21,11 +21,24 @@ interface ReasoningTraceProps {
 }
 
 export function ReasoningTrace({ data, tokens, defaultExpanded = false }: ReasoningTraceProps) {
-  // Read on every render, so a trace that opened only while it streamed folds
-  // once the thought completes. A press by the reader wins from then on.
+  // Follows `defaultExpanded` until the reader explicitly toggles the card;
+  // once toggled, their choice persists across streaming updates and completion.
   const [chosen, setChosen] = useState<boolean | null>(null);
   const isExpanded = chosen ?? defaultExpanded;
   const [activeStepId, setActiveStepId] = useState<string | null>(null);
+
+  const toggleExpanded = useCallback(() => {
+    setChosen((current) => !(current ?? defaultExpanded));
+  }, [defaultExpanded]);
+
+  const collapseTrace = useCallback(() => {
+    setChosen(false);
+  }, []);
+
+  const hasBodyContent = useMemo(
+    () => data.steps.some((step) => Boolean(step.content?.trim()) || Boolean(step.codeSnippet)),
+    [data.steps],
+  );
 
   const durationFormatted = (data.durationMs / 1000).toFixed(1);
   const isThinking = data.status === "thinking";
@@ -158,7 +171,7 @@ export function ReasoningTrace({ data, tokens, defaultExpanded = false }: Reason
         body: {
           paddingHorizontal: 16,
           paddingTop: 12,
-          paddingBottom: 16,
+          paddingBottom: 12,
           borderTopWidth: 1,
           borderTopColor: tokens.borderSubtle,
           backgroundColor: tokens.surfaceGlass,
@@ -220,7 +233,8 @@ export function ReasoningTrace({ data, tokens, defaultExpanded = false }: Reason
         footer: {
           flexDirection: "row",
           alignItems: "center",
-          justifyContent: "flex-end",
+          justifyContent: "space-between",
+          gap: 12,
           paddingTop: 8,
           marginTop: 8,
           borderTopWidth: 1,
@@ -231,6 +245,24 @@ export function ReasoningTrace({ data, tokens, defaultExpanded = false }: Reason
           fontSize: tokens.fs(11),
           color: tokens.foregroundSubtle,
         },
+        collapseButton: {
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 5,
+          paddingHorizontal: 8,
+          paddingVertical: 4,
+          borderRadius: radius.block,
+        },
+        collapseButtonPressed: {
+          backgroundColor: tokens.surface2,
+        },
+        collapseButtonText: {
+          fontFamily: tokens.fontUi,
+          fontSize: tokens.fs(12),
+          fontWeight: "500",
+          color: tokens.foregroundMuted,
+          ...unselectable,
+        },
       }),
     [tokens, isThinking],
   );
@@ -240,7 +272,12 @@ export function ReasoningTrace({ data, tokens, defaultExpanded = false }: Reason
       {...surfaceProps(frosted, glowing(tokens.isDark), selectionSurface)}
       style={styles.wrapper}
     >
-      <Pressable onPress={() => setChosen(!isExpanded)} style={styles.header}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityState={{ expanded: isExpanded }}
+        onPress={toggleExpanded}
+        style={styles.header}
+      >
         <View style={styles.headerLeft}>
           <View style={styles.iconBubble}>
             <Breathe active={isThinking}>
@@ -370,6 +407,22 @@ export function ReasoningTrace({ data, tokens, defaultExpanded = false }: Reason
             <Text selectable style={styles.footerText}>
               Total Tokens: {data.totalTokens}
             </Text>
+            {hasBodyContent ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Collapse reasoning summary"
+                accessibilityState={{ expanded: isExpanded }}
+                hitSlop={8}
+                onPress={collapseTrace}
+                style={({ pressed }) => [
+                  styles.collapseButton,
+                  pressed && styles.collapseButtonPressed,
+                ]}
+              >
+                <Text style={styles.collapseButtonText}>Collapse</Text>
+                <Glyph name="ChevronUp" size={13} color={tokens.foregroundMuted} />
+              </Pressable>
+            ) : null}
           </View>
         </View>
       )}

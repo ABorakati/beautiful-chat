@@ -7,6 +7,7 @@ import type { PluginTheme } from "@getpaseo/plugin";
 import { useThemeTokens } from "./components/theme-tokens";
 import { ToolCallout } from "./components/tool-callouts";
 import { toolCardStartsExpanded } from "./tool-collapse";
+import { reasoningStartsExpanded, useHostAutoExpandReasoning } from "./reasoning-collapse";
 import { ReasoningTrace } from "./components/reasoning-trace";
 import { TaskList } from "./components/task-list";
 import { UserMessage } from "./components/user-message";
@@ -216,13 +217,15 @@ export function LiveReasoningRenderer({
   }, [data, revealed]);
 
   const itemKey = `reasoning:${timestamp.getTime()}`;
+  const hostAutoExpand = useHostAutoExpandReasoning();
+  const defaultExpanded = reasoningStartsExpanded(preferences, hostAutoExpand);
 
   return (
     <View {...hostFontEscape}>
       <ReasoningTrace
         data={reasoningData}
         tokens={tokens}
-        defaultExpanded={data.phase === "streaming" || !preferences.collapseReasoning}
+        defaultExpanded={defaultExpanded}
       />
       <ChecklistFeed agentId={agentId} />
       <TimelineTailHub
