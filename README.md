@@ -16,7 +16,7 @@ them.
 paseo plugin install ABorakati/beautiful-chat
 ```
 
-The manifest requires Paseo `>=0.15.0`. Open **Settings → Plugins → Beautiful Chat** for the
+The manifest requires Paseo `>=0.16.0`. Open **Settings → Plugins → Beautiful Chat** for the
 accent, fonts, frosted glass, and prompt bubble options.
 
 ---
@@ -157,7 +157,7 @@ Phase name, per-task status, durations, and a blocked task with its reason.
 Live checklist is on by default. The plugin hides a checklist only when its agent feed identifies a newer update.
 Cards stay visible while the feed is not ready, scans history, finds no matching list, or reports an error.
 The plugin retries failed feeds after 500 ms and doubles the delay to a 10-second maximum.
-The 0.15 SDK exposes no row ID or sequence number to todo renderers. Host timestamps do not identify todo updates.
+The 0.16 SDK exposes no row ID or sequence number to todo renderers. Host timestamps do not identify todo updates.
 The plugin compares task content instead. Unknown content stays visible.
 The transformer removes older content when no observed agent needs it as its newest checklist.
 This removes the empty host wrapper for those older updates. Refreshes occur at most once per frame (16 ms).
@@ -244,7 +244,7 @@ back to Paseo, whose renderer supports drag selection.
 
 **Use Paseo fonts reads unsupported, private host state.** It reads `uiFontFamily`, `monoFontFamily` and `codeFontSize`
 from the `@paseo:app-settings` record in `localStorage`. The plugin SDK does not expose these settings
-in 0.8 or 0.15. A host change can break this feature without warning. It has no effect on native,
+in 0.8, 0.15, or 0.16. A host change can break this feature without warning. It has no effect on native,
 which has no `localStorage`.
 
 ---
@@ -265,7 +265,7 @@ This setting has no effect outside handoff.
 Summary first shipped in [Paseo 0.1.108](https://github.com/getpaseo/paseo/pull/2031).
 Since 0.13, Paseo uses `chatDisplay` for **Collapse tool calls** and **Collapse turns**.
 The plugin reads the private `localStorage` key `@paseo:app-settings`.
-The SDK exposes no host settings API in 0.8 or 0.15.
+The SDK exposes no host settings API in 0.8, 0.15, or 0.16.
 A host key or data shape change can silently stop handoff.
 These settings have no effect on iOS or Android because those clients have no `localStorage`.
 
@@ -380,7 +380,7 @@ The link cannot open Paseo's own file editor: see the first limitation below.
 
 ## Plugin SDK limitations found while building this
 
-First measured against `@getpaseo/plugin` 0.8.0 and the Paseo 0.8.0 desktop build, and rechecked against the 0.15.0 types: limitations 1 to 3 still hold (0.15 adds a `navigation` prop to panels and screens, not to timeline renderers, and user messages still carry no attachment signal). Each entry names the
+First measured against `@getpaseo/plugin` 0.8.0 and the Paseo 0.8.0 desktop build, and rechecked against the 0.15.0 and 0.16.2 types: limitations 1 to 3 still hold (0.15/0.16 add a `navigation` prop to panels and screens, not to timeline renderers, user messages still carry no attachment signal, and replacing prompts/replies still suppresses host Rewind and Fork actions). Each entry names the
 evidence and the workaround this plugin uses.
 
 1. **No file navigation.** Timeline renderer props are exactly `{agentId, theme, host, layout,
