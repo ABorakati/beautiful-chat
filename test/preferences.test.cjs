@@ -34,6 +34,7 @@ function harness(platform = "ios", legacy) {
     const localRequire = (id) => {
       if (id === "react-native") return { Platform: { OS: platform } };
       if (id.endsWith("/settings-page") || id.endsWith("/live-renderers")) return {};
+      if (id === "./client/components/markdown/parse") return load("client/components/markdown/parse.ts");
       if (id.includes("/components/")) return new Proxy({}, { get: () => () => () => {} });
       if (id.startsWith(".")) {
         const base = resolve(dirname(filename), id);
@@ -416,6 +417,34 @@ test("assistant transformer leaves generative-UI fences to their plugin", async 
       "    ```ui\nCard()\n```",
       "```ts\nconst x = 1;\n```\napp is now running",
       "```\nui\n```",
+    ]) {
+      assert.equal(transform(text).items[0].kind, "omp-assistant", text);
+    }
+  } finally {
+    cleanup();
+  }
+});
+
+test("assistant transformer leaves Mermaid diagrams to the native host", async () => {
+  const h = harness("web");
+  const cleanup = h.contribute(host().rpc);
+  await new Promise(setImmediate);
+  const assistant = h.transformers.get("omp-enhanced-assistant");
+  const transform = (text) => assistant.transform({ item: { type: "assistant_message", text } });
+  try {
+    for (const text of [
+      "Before\n\n```mermaid\nflowchart TD\nA --> B\n```\n\nAfter",
+      "```MERMAID\nflowchart TD\nA --> B\n```",
+      "~~~mermaid\nsequenceDiagram\nAlice->>Bob: Hello\n~~~",
+      "  ```mermaid\nflowchart LR\nA --> B\n  ```",
+    ]) {
+      assert.equal(transform(text), undefined, text);
+    }
+    for (const text of [
+      "Ordinary **prose**",
+      "```typescript\nconst language = 'mermaid';\n```",
+      "````markdown\n```mermaid\nA --> B\n```\n````",
+      "Use `mermaid` to draw a diagram.",
     ]) {
       assert.equal(transform(text).items[0].kind, "omp-assistant", text);
     }
