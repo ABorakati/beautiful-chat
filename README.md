@@ -206,18 +206,18 @@ Devicon brand marks, and the file-manager link.
 | Appearance | Line spacing | Keep the original spacing with Compact. Balanced adds 15% and Spacious adds 30%. |
 | Appearance | Frosted glass | Blur card backgrounds where supported, or use solid surfaces. |
 | Appearance | Pointer glow | Show a light under the pointer on cards on desktop and web. Reduced motion disables this effect. |
-| Replies | Assistant markdown | Style headings, lists, code, and images, including local files through the daemon. Disable this setting for Mermaid diagrams and Paseo's file-path links. |
+| Replies | Assistant markdown | Style headings, lists, tables, code, and images, including local files through the daemon. Replies with Mermaid diagrams or generative-UI (`ui`/`app`) blocks are handed back to Paseo or their plugin automatically. Disable this setting for Paseo's native file-path links and Fork footer. |
 | Replies | Markdown style | Choose Document, Compact, or Terminal. This choice is disabled when Assistant markdown is off. |
 | Replies | Highlight marks | On by default. Show `==text==` in a reply as a marker highlight. Disable this setting to keep the equals signs as typed. |
 | Replies | Mark colour | Choose the highlight wash, or a custom colour. Shown while Highlight marks is on. |
 | Replies | Bold colour | Keep bold text in the surrounding colour, use the accent, or choose a preset or custom colour. |
 | Replies | Long code blocks | Fold reply code blocks over 30 or 60 lines to a 10-line preview. Copy keeps the whole block. |
-| Prompts | Enhanced prompt bubble | Show the plugin's prompt bubble without pasted images. Disable this setting for Paseo's bubble with images. |
+| Prompts | Enhanced prompt bubble | Show the plugin's prompt bubble without pasted images or Paseo's inline Rewind menu. Disable this setting for Paseo's native bubble with images and Rewind. |
 | Prompts | Long prompts | Fold prompts over 15 or 30 lines to an 8-line preview. Paseo's own bubble does not fold. |
 | Timeline | Collapse when finished | Choose shell, write, edit, read, and other tool groups independently. Failed calls and agent questions stay open. |
 | Timeline | Collapse length | Fold every selected card, or only cards over 10, 20, or 50 lines. |
 | Timeline | Open while running | Open tool cards while their calls run, then apply the collapse rules. Disable this setting to apply those rules from the start. |
-| Timeline | Fold reasoning summaries | Fold summaries after completion. Disable this setting to keep every summary open. |
+| Timeline | Fold reasoning summaries | Start reasoning summaries collapsed, including while streaming, unless Paseo's Auto-expand reasoning setting is enabled. Expanded summaries include a bottom Collapse button. Disable this setting to keep every summary open. |
 | Timeline | Let Paseo fold tool calls | Off by default. On desktop and web, let Paseo draw calls when its display setting folds them. |
 | Timeline | Show reasoning between folded calls | On by default. Keep reasoning visible while Paseo folds tool calls. |
 | Timeline | Live checklist | On by default. Hide older updates when the agent feed identifies a newer checklist. Keep cards visible while the feed is unavailable. Disable this setting to show every update. |
@@ -304,7 +304,7 @@ All actions run on the computer that runs the Paseo daemon, not on the client.
 macOS always reveals the path with `open -R`, including an app bundle.
 **Show in File Manager** cannot launch that bundle and needs no confirmation.
 
-On desktop and web, right-click a path link or inline code that contains an absolute path.
+On desktop and web, right-click a path link or inline code that contains an absolute path, or left-click a labeled markdown link targeting a local path or `file://` URL (such as `[Guide](/tmp/guide.md)`). On mobile/native, pressing a labeled local link reveals the file directly.
 The menu offers **Copy Selection** when text is selected, **Copy Path**, **Open in Default App**, and **Show in File Manager**.
 A relative path offers open and reveal actions only when the renderer supplies the agent's working folder.
 A missing path or a launch error shows a message for five seconds.
