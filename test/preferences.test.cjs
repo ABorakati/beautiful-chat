@@ -385,3 +385,41 @@ test("text size ignores legacy localStorage and clamps host values", async () =>
   await native.initializeEnhancerPreferences(host({ preferences: { textScale: 10 } }).rpc);
   assert.equal(native.getEnhancerPreferences().textScale, 1.35);
 });
+
+test("assistant transformer leaves generative-UI fences to their plugin", async () => {
+  const h = harness("web");
+  const cleanup = h.contribute(host().rpc);
+  await new Promise(setImmediate);
+  const assistant = h.transformers.get("omp-enhanced-assistant");
+  const transform = (text) => assistant.transform({ item: { type: "assistant_message", text } });
+  try {
+    for (const text of [
+      'Sure:\n```ui\nCard("T",[Text("hi")])\n```',
+      "```app\n<b>hi</b>\n```",
+      "```UI\nCard()\n```",
+      "```App\n<b>hi</b>\n```",
+      "~~~ui\nCard()\n~~~",
+      "  ```ui\nCard()\n  ```",
+      "````ui\nCard()\n````",
+      '```ui title="Dashboard"\nCard()\n```',
+      "Before\r\n```ui\r\nCard()\r\n```",
+      '```ui\n{"type":',
+    ]) {
+      assert.equal(transform(text), undefined, text);
+    }
+    for (const text of [
+      "Ordinary **prose**",
+      "```uix\nCard()\n```",
+      "```ui-kit\nCard()\n```",
+      "```ui_2\nCard()\n```",
+      "Run `ui` inline.",
+      "    ```ui\nCard()\n```",
+      "```ts\nconst x = 1;\n```\napp is now running",
+      "```\nui\n```",
+    ]) {
+      assert.equal(transform(text).items[0].kind, "omp-assistant", text);
+    }
+  } finally {
+    cleanup();
+  }
+});
