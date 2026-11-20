@@ -1,39 +1,33 @@
 import { Linking, Platform } from "react-native";
+import { openExternalUrl } from "@getpaseo/plugin/client";
+import { isExternalLink } from "./markdown/link-target";
 
 /**
- * Opens an http(s) link the way the host does.
+ * Opens an external link (`http:`, `https:`, `mailto:`) the way the host does.
  *
- * Three sinks, in the host's own order of preference
- * (`app/src/utils/open-external-url.ts`):
+ * Order of preference:
  *
- * 1. On Electron the desktop bridge (`window.paseoDesktop.opener.openUrl`,
- *    read in `desktop/electron/host.ts:7`) hands the URL to the OS browser.
- *    Without it a link opens inside the app window, which has no chrome to
- *    navigate back from.
- * 2. On plain web, `window.open` with `noopener,noreferrer`.
- * 3. On native, `Linking.openURL`.
+ * 1. For `http:`/`https:`, `@getpaseo/plugin/client`'s `openExternalUrl` when
+ *    provided by the Paseo >=0.16 host (hands URLs to the OS browser cleanly
+ *    on Desktop and mobile).
+ * 2. On Electron web, the desktop bridge (`window.paseoDesktop.opener.openUrl`).
+ * 3. On plain web, `window.open` with `noopener,noreferrer`.
+ * 4. On native, `Linking.openURL`.
  *
  * The scheme allowlist mirrors the host's: a link in a model's reply is
- * untrusted input, and `javascript:` or `file:` must never reach a sink.
+ * untrusted input, and `javascript:`, `data:`, or `file:` must never reach a
+ * browser navigation sink.
  */
-const ALLOWED = new Set(["http:", "https:", "mailto:"]);
-
 interface DesktopOpener {
   opener?: { openUrl?: (url: string) => unknown };
 }
 
 /** Use the same scheme check for the opener and web anchors. */
 export function isAllowedLink(url: string): boolean {
-  try {
-    return ALLOWED.has(new URL(url).protocol);
-  } catch {
-    return false;
-  }
+  return isExternalLink(url);
 }
 
-export function openLink(url: string): void {
-  if (!isAllowedLink(url)) return;
-
+function fallbackOpenLink(url: string): void {
   if (Platform.OS === "web") {
     const bridge = (globalThis as { paseoDesktop?: DesktopOpener }).paseoDesktop;
     const openUrl = bridge?.opener?.openUrl;
@@ -48,4 +42,21 @@ export function openLink(url: string): void {
   void Linking.openURL(url).catch(() => {
     // No handler for the scheme on this device; nothing useful to show.
   });
+}
+
+export function openLink(url: string): void {
+  if (!isAllowedLink(url)) return;
+
+  if (/^https?:/i.test(url) && typeof openExternalUrl === "function") {
+    try {
+      void Promise.resolve(openExternalUrl(url)).catch(() => {
+        fallbackOpenLink(url);
+      });
+      return;
+    } catch {
+      // Fall through to the direct opener below.
+    }
+  }
+
+  fallbackOpenLink(url);
 }

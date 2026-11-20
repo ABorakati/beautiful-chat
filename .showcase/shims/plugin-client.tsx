@@ -52,3 +52,7 @@ export function useRpc<InputSchema extends ZodType, OutputSchema extends ZodType
 export function useSettings() {
   return { status: "ready" } as never;
 }
+
+export async function openExternalUrl(url: string): Promise<void> {
+  globalThis.open?.(url, "_blank", "noopener,noreferrer");
+}

@@ -6,14 +6,15 @@ import { radius, withAlpha, type ExtendedThemeTokens } from "../theme-tokens";
 import { selectableSurface, unselectable } from "../selection";
 import { selectionSurface } from "../selection-actions";
 import { SyntaxHighlightBlock } from "../syntax-highlight";
-import { isAllowedLink, openLink } from "../open-link";
-import { pathTargetProps } from "../path-link-menu";
+import { openLink } from "../open-link";
+import { openPathLinkMenu, pathTargetProps } from "../path-link-menu";
 import {
   parseMarkdown,
   isFilePathToken,
   type MdAlign, type MdBlock, type MdInline,
   type MdListItem,
 } from "./parse";
+import { classifyMarkdownLink } from "./link-target";
 import { MarkdownImage } from "./markdown-image";
 import { fitColumnWidths, MIN_FIT_COLUMN, TABLE_END_PADDING } from "./table-layout";
 
@@ -311,7 +312,7 @@ function renderBlock(
             {metrics.headingHash ? (
               <Text style={styles.headingHash}>{HASH_LABELS[block.level - 1] ?? "# "}</Text>
             ) : null}
-            {renderInline(block.spans, styles, key, context.onRevealFile)}
+            {renderInline(block.spans, styles, key, context.onRevealFile, context.cwd)}
           </Text>
           {metrics.headingRule && block.level <= 2 ? <View style={styles.headingRule} /> : null}
         </View>
@@ -337,7 +338,7 @@ function renderBlock(
         <View key={key} style={styles.quote}>
       {block.paragraphs.map((spans, index) => (
         <Text key={`${key}q${index}`} selectable style={styles.quoteText}>
-          {renderInline(spans, styles, `${key}q${index}`, context.onRevealFile)}
+          {renderInline(spans, styles, `${key}q${index}`, context.onRevealFile, context.cwd)}
         </Text>
       ))}
         </View>
@@ -385,7 +386,7 @@ function renderParagraph(spans: MdInline[], key: string, context: RenderContext)
   if (!spans.some((span) => span.kind === "image")) {
     return (
       <Text key={key} selectable style={styles.paragraph}>
-        {renderInline(spans, styles, key, context.onRevealFile)}
+        {renderInline(spans, styles, key, context.onRevealFile, cwd)}
       </Text>
     );
   }
@@ -399,7 +400,7 @@ function renderParagraph(spans: MdInline[], key: string, context: RenderContext)
       const runKey = `${key}p${parts.length}`;
       parts.push(
         <Text key={runKey} selectable style={styles.paragraph}>
-          {renderInline(run, styles, runKey, context.onRevealFile)}
+          {renderInline(run, styles, runKey, context.onRevealFile, cwd)}
         </Text>,
       );
     }
@@ -444,7 +445,7 @@ function renderItem(
   // item's first character instead of under its marker.
   const body = (
     <Text selectable style={item.checked === true ? styles.itemTextDone : styles.itemText}>
-      {renderInline(item.spans, styles, key, context.onRevealFile)}
+      {renderInline(item.spans, styles, key, context.onRevealFile, context.cwd)}
     </Text>
   );
 
@@ -570,7 +571,7 @@ function TableGrid({
                 { width: widths[column] ?? metrics.columnMin },
               ]}
             >
-              {renderInline(cell, styles, cellKey, context.onRevealFile)}
+              {renderInline(cell, styles, cellKey, context.onRevealFile, context.cwd)}
             </Text>
           );
         })}
@@ -590,7 +591,7 @@ function TableGrid({
                   { width: widths[column] ?? metrics.columnMin },
                 ]}
               >
-                {renderInline(cell, styles, cellKey, context.onRevealFile)}
+                {renderInline(cell, styles, cellKey, context.onRevealFile, context.cwd)}
               </Text>
             );
           })}
@@ -614,6 +615,7 @@ function renderInline(
   styles: MarkdownStyles,
   keyPrefix: string,
   onRevealFile?: (path: string) => void,
+  cwd?: string | null,
 ): React.ReactNode[] {
   return spans.map((span, index) => {
     const key = `${keyPrefix}i${index}`;
@@ -663,25 +665,25 @@ function renderInline(
       case "strong":
         return (
           <Text key={key} selectable style={styles.strong}>
-            {renderInline(span.spans, styles, key, onRevealFile)}
+            {renderInline(span.spans, styles, key, onRevealFile, cwd)}
           </Text>
         );
       case "emphasis":
         return (
           <Text key={key} selectable style={styles.emphasis}>
-            {renderInline(span.spans, styles, key, onRevealFile)}
+            {renderInline(span.spans, styles, key, onRevealFile, cwd)}
           </Text>
         );
       case "strike":
         return (
           <Text key={key} selectable style={styles.strike}>
-            {renderInline(span.spans, styles, key, onRevealFile)}
+            {renderInline(span.spans, styles, key, onRevealFile, cwd)}
           </Text>
         );
       case "mark":
         return (
           <Text key={key} selectable style={styles.mark}>
-            {renderInline(span.spans, styles, key, onRevealFile)}
+            {renderInline(span.spans, styles, key, onRevealFile, cwd)}
           </Text>
         );
       case "image":
@@ -695,26 +697,50 @@ function renderInline(
         );
       case "link": {
         // A Text keeps the link inside the paragraph's selection range.
-        // Safe web anchors let Paseo offer Copy Link Address.
-        // Other targets carry a path mark, not an href that can navigate.
+        // Safe external anchors let Paseo offer Copy Link Address; local file
+        // links open the path menu on left-click on web/desktop (or fall back
+        // to onRevealFile on native); unsafe schemes render as inert text.
         const web = Platform.OS === "web";
-        const allowed = isAllowedLink(span.href);
+        const target = classifyMarkdownLink(span.href);
+        if (target.kind === "unsafe") {
+          return (
+            <Text key={key} selectable>
+              {renderInline(span.spans, styles, key)}
+            </Text>
+          );
+        }
+        if (target.kind === "file") {
+          return (
+            <Text
+              key={key}
+              selectable
+              accessibilityRole="link"
+              accessibilityLabel={`File link: ${target.path}`}
+              {...pathMarkProps(target.path)}
+              onPress={(event) => {
+                if (web) event.preventDefault?.();
+                if (openPathLinkMenu(target.path, event, cwd)) return;
+                onRevealFile?.(target.path);
+              }}
+              style={styles.link}
+            >
+              {renderInline(span.spans, styles, key)}
+            </Text>
+          );
+        }
         return (
           <Text
             key={key}
             selectable
             accessibilityRole="link"
-            {...(web && allowed ? ({ href: span.href } as object) : {})}
-            {...(web && !allowed
-              ? ({ dataSet: { bcpath: span.href } } as unknown as TextProps)
-              : {})}
+            {...(web ? ({ href: target.url } as object) : {})}
             onPress={(event) => {
-              if (web) event.preventDefault();
-              openLink(span.href);
+              if (web) event.preventDefault?.();
+              openLink(target.url);
             }}
             style={styles.link}
           >
-            {renderInline(span.spans, styles, key, onRevealFile)}
+            {renderInline(span.spans, styles, key)}
           </Text>
         );
       }

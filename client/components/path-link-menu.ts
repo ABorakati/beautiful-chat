@@ -4,10 +4,88 @@ import { Platform, type TextProps, type ViewProps } from "react-native";
 import { revealPathRpc, type OpenPathPolicy } from "../../shared/file-rpc";
 import { getEnhancerPreferences, updateEnhancerPreferences } from "../preferences";
 import { isSafeOpenPath, normalizeOpenPath, requiresOpenConfirmation } from "../../shared/path-open-policy";
+import { normalizeFileUrl } from "./markdown/link-target";
 import { radius } from "./theme-tokens";
 
 const GAP = 8;
 const ABSOLUTE_PATH = /^(?:[a-zA-Z]:[\\/]|[\\/])/;
+
+interface MenuOpenRequest {
+  path: string;
+  x?: number;
+  y?: number;
+  target?: Element | null;
+  cwd?: string | null;
+}
+
+interface PressEventLike {
+  clientX?: number;
+  clientY?: number;
+  pageX?: number;
+  pageY?: number;
+  target?: unknown;
+  currentTarget?: unknown;
+  nativeEvent?: {
+    clientX?: number;
+    clientY?: number;
+    pageX?: number;
+    pageY?: number;
+    target?: unknown;
+  };
+}
+
+let activeMenuOpener: ((request: MenuOpenRequest) => boolean) | null = null;
+
+function asElement(node: unknown): Element | null {
+  if (!node || typeof node !== "object") return null;
+  if (typeof Element !== "undefined" && node instanceof Element) return node;
+  const candidate = node as { nodeType?: number; parentElement?: Element | null; closest?: unknown };
+  if (candidate.nodeType === 1 && typeof candidate.closest === "function") {
+    return candidate as unknown as Element;
+  }
+  if (candidate.parentElement && typeof candidate.parentElement.closest === "function") {
+    return candidate.parentElement;
+  }
+  return null;
+}
+
+/**
+ * Opens the installed web path menu at the pointer position for a local file
+ * link. Returns false when no menu is installed (native iOS/Android, offline
+ * showcase, or before setup) so callers can fall back to `onRevealFile`.
+ */
+export function openPathLinkMenu(
+  path: string,
+  event?: unknown,
+  cwd?: string | null,
+): boolean {
+  if (Platform.OS !== "web" || !activeMenuOpener) return false;
+  const press = event as PressEventLike | undefined;
+  const native = press?.nativeEvent;
+  const x =
+    typeof native?.clientX === "number"
+      ? native.clientX
+      : typeof press?.clientX === "number"
+        ? press.clientX
+        : typeof native?.pageX === "number"
+          ? native.pageX
+          : typeof press?.pageX === "number"
+            ? press.pageX
+            : undefined;
+  const y =
+    typeof native?.clientY === "number"
+      ? native.clientY
+      : typeof press?.clientY === "number"
+        ? press.clientY
+        : typeof native?.pageY === "number"
+          ? native.pageY
+          : typeof press?.pageY === "number"
+            ? press.pageY
+            : undefined;
+  const target =
+    asElement(press?.currentTarget) ?? asElement(press?.target) ?? asElement(native?.target);
+  return activeMenuOpener({ path, x, y, target, cwd });
+}
 
 /** Mark absolute paths in inline code for the web context menu. */
 export function pathTargetProps(text: string): TextProps | null {
@@ -31,15 +109,7 @@ interface PathContext {
 /** Leave host routes to the host. Unix paths need a plugin marker or file URL. */
 function filePathFromAnchor(href: string): string | null {
   if (/^(?:[a-zA-Z]:[\\/]|\\\\)/.test(href)) return href;
-  if (!/^file:\/\//i.test(href)) return null;
-  try {
-    const url = new URL(href);
-    const path = decodeURIComponent(url.pathname);
-    if (url.hostname && url.hostname !== "localhost") return `//${url.hostname}${path}`;
-    return /^\/[a-zA-Z]:\//.test(path) ? path.slice(1) : path;
-  } catch {
-    return null;
-  }
+  return normalizeFileUrl(href);
 }
 
 const MENU_CSS = `
@@ -239,6 +309,70 @@ export function installPathLinkMenu(client: PluginClientContext): () => void {
       .catch((error: unknown) => showError(`Could not open ${path}: ${String(error)}`));
   };
 
+  const showMenu = (
+    path: string,
+    context: PathContext,
+    x: number,
+    y: number,
+    anchor: Element | null,
+  ) => {
+    // Read now. A menu press can collapse the text selection.
+    const selected = document.getSelection?.()?.toString() ?? "";
+
+    menu.replaceChildren();
+    menu.style.display = "flex";
+    if (selected) addItem("Copy Selection", () => void copyText(selected));
+    addItem("Copy Path", () => void copyText(path));
+    // Without an agent folder, relative paths remain copy-only.
+    if (ABSOLUTE_PATH.test(path) || context.cwd) {
+      addItem("Open in Default App", () => confirmOpen(path, context));
+      addItem("Show in File Manager", () => shell(path, context, false));
+    }
+
+    const paletteSource = anchor ?? document.body;
+    const textColor =
+      typeof getComputedStyle === "function" && paletteSource
+        ? getComputedStyle(paletteSource).color
+        : "";
+    for (const [name, value] of Object.entries(paletteFor(textColor))) {
+      menu.style.setProperty(`--${name}`, value);
+      dialog.style.setProperty(`--${name}`, value);
+    }
+    host.style.setProperty("display", "block", "important");
+    const left = Math.min(x, window.innerWidth - menu.offsetWidth - GAP);
+    const top = Math.min(y, window.innerHeight - menu.offsetHeight - GAP);
+    host.style.setProperty("left", `${Math.max(GAP, left)}px`, "important");
+    host.style.setProperty("top", `${Math.max(GAP, top)}px`, "important");
+  };
+
+  const openForPress = (request: MenuOpenRequest): boolean => {
+    if (disposed) return false;
+    if (dialog.open) return true;
+    const selection = document.getSelection?.();
+    // Do not hijack a drag-selection that finishes over a link.
+    if (selection && !selection.isCollapsed && selection.toString()) return true;
+    hide();
+    const anchor = request.target?.closest?.("[data-bcpath]") ?? request.target ?? null;
+    const surface = request.target?.closest?.("[data-bcagent]");
+    const context: PathContext = {
+      cwd: surface?.getAttribute("data-bccwd") ?? request.cwd ?? "",
+      agentId: surface?.getAttribute("data-bcagent") ?? undefined,
+    };
+    let x = request.x;
+    let y = request.y;
+    if (
+      (x === undefined || y === undefined || (x === 0 && y === 0)) &&
+      typeof anchor?.getBoundingClientRect === "function"
+    ) {
+      const rect = anchor.getBoundingClientRect();
+      x = rect.left;
+      y = rect.bottom + 4;
+    }
+    showMenu(request.path, context, x ?? GAP, y ?? GAP, anchor);
+    return true;
+  };
+  activeMenuOpener = openForPress;
+
   const onContextMenu = (event: MouseEvent) => {
     if (dialog.open) {
       event.preventDefault();
@@ -257,30 +391,10 @@ export function installPathLinkMenu(client: PluginClientContext): () => void {
       cwd: surface?.getAttribute("data-bccwd") ?? "",
       agentId: surface?.getAttribute("data-bcagent") ?? undefined,
     };
-    // Read now. A menu press can collapse the text selection.
-    const selected = document.getSelection()?.toString() ?? "";
 
     event.preventDefault();
     event.stopPropagation();
-    menu.replaceChildren();
-    menu.style.display = "flex";
-    if (selected) addItem("Copy Selection", () => void copyText(selected));
-    addItem("Copy Path", () => void copyText(path));
-    // Without an agent folder, relative paths remain copy-only.
-    if (ABSOLUTE_PATH.test(path) || context.cwd) {
-      addItem("Open in Default App", () => confirmOpen(path, context));
-      addItem("Show in File Manager", () => shell(path, context, false));
-    }
-
-    for (const [name, value] of Object.entries(paletteFor(getComputedStyle(link).color))) {
-      menu.style.setProperty(`--${name}`, value);
-      dialog.style.setProperty(`--${name}`, value);
-    }
-    host.style.setProperty("display", "block", "important");
-    const left = Math.min(event.clientX, window.innerWidth - menu.offsetWidth - GAP);
-    const top = Math.min(event.clientY, window.innerHeight - menu.offsetHeight - GAP);
-    host.style.setProperty("left", `${Math.max(GAP, left)}px`, "important");
-    host.style.setProperty("top", `${Math.max(GAP, top)}px`, "important");
+    showMenu(path, context, event.clientX, event.clientY, link);
   };
 
   const onPointerDown = (event: MouseEvent) => {
@@ -309,6 +423,7 @@ export function installPathLinkMenu(client: PluginClientContext): () => void {
   window.addEventListener("resize", hideMenu);
   return () => {
     disposed = true;
+    if (activeMenuOpener === openForPress) activeMenuOpener = null;
     hide();
     document.removeEventListener("contextmenu", onContextMenu, true);
     document.removeEventListener("mousedown", onPointerDown, true);
