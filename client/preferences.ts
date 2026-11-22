@@ -140,6 +140,8 @@ export interface EnhancerPreferences {
   expandWhileRunning: boolean;
   /** Start reasoning summaries collapsed, including while streaming, unless Paseo's Auto-expand reasoning is on. Off keeps every summary open. */
   collapseReasoning: boolean;
+  /** Show only the newest reasoning summary in each turn once the feed identifies a newer one. */
+  latestReasoningOnly: boolean;
   /** Show only the newest checklist where it arrived. Off shows every update. */
   liveChecklist: boolean;
   /** A reply's code block longer than this folds to a preview. Zero never folds. */
@@ -180,6 +182,7 @@ export const DEFAULT_PREFERENCES: Readonly<EnhancerPreferences> = {
   collapseLineLimit: 0,
   expandWhileRunning: true,
   collapseReasoning: true,
+  latestReasoningOnly: false,
   liveChecklist: true,
   codeFoldLimit: 30,
   promptFoldLimit: 15,

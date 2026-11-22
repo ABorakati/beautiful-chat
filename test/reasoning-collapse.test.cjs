@@ -180,6 +180,13 @@ function createHarness({
       ) {
         return load(resolve(dirname(filename), id));
       }
+      if (id === "./components/reasoning-live") {
+        return {
+          ReasoningFeed: () => null,
+          reasoningKey: (text) => (typeof text === "string" ? text : ""),
+          useReasoningRowVisible: () => true,
+        };
+      }
       if (id.startsWith(".")) {
         return new Proxy(
           {},
