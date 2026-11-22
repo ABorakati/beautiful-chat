@@ -213,10 +213,11 @@ function acquireFeed(paseo: PaseoApi, agentId: string): () => void {
       let order = 0;
       let ready = false;
       let scanned = false;
+      let complete = false;
       let scan = 0;
 
       const publish = () => {
-        created.snapshot = scanned ? computeReasoningSnapshot(entries.values()) : undefined;
+        created.snapshot = scanned && complete ? computeReasoningSnapshot(entries.values()) : undefined;
         notify();
       };
       const note: NoteItem = (item, timestamp, seq) => {
@@ -254,12 +255,14 @@ function acquireFeed(paseo: PaseoApi, agentId: string): () => void {
         entries.clear();
         order = 0;
         scanned = false;
+        complete = false;
         publish();
         if (!ready) return;
         void backfill(paseo, agentId, () => active() && scan === currentScan, note)
-          .then(() => {
+          .then((done) => {
             if (!active() || scan !== currentScan) return;
             scanned = true;
+            complete = done;
             retryDelay = 500;
             publish();
           })

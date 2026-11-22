@@ -247,3 +247,45 @@ test("an unanswered sibling agent feed blocks global transformer suppression", a
     cleanup();
   }
 });
+
+test("incomplete backfill past MAX_PAGES fails open so unscanned turns stay protected", async () => {
+  let pagesRequested = 0;
+  const mock = createMockPaseo({
+    "agent-1": {
+      refetch({ direction, cursor }) {
+        pagesRequested += 1;
+        if (direction === "tail") {
+          return {
+            entries: [
+              { item: { type: "user_message" }, timestamp: "2026-11-21T10:05:00Z", seqEnd: 1001 },
+              { item: { type: "reasoning", text: "Checking files" }, timestamp: "2026-11-21T10:05:01Z", seqEnd: 1002 },
+              { item: { type: "reasoning", text: "Done" }, timestamp: "2026-11-21T10:05:02Z", seqEnd: 1003 },
+            ],
+            hasOlder: true,
+            startCursor: "page-2",
+          };
+        }
+        return {
+          entries: [],
+          hasOlder: true,
+          startCursor: `${cursor}-older`,
+        };
+      },
+    },
+  });
+
+  const { mod, cleanup } = loadReasoningLive({ paseo: mock.api });
+  try {
+    assert.equal(mod.useReasoningRowVisible("agent-1", "Checking files", true), true);
+    await flush();
+    await flush();
+
+    assert.equal(pagesRequested, 5);
+    // Because older history was truncated at MAX_PAGES, an unscanned turn may end
+    // with "Checking files"; both renderer and transformer must fail open.
+    assert.equal(mod.useReasoningRowVisible("agent-1", "Checking files", true), true);
+    assert.equal(mod.isSupersededReasoning("Checking files"), false);
+  } finally {
+    cleanup();
+  }
+});
