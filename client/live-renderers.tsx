@@ -26,6 +26,11 @@ import { publishHubSnapshot } from "./hub-activity";
 import { MarkdownView } from "./components/markdown/markdown-view";
 import { TimelineTailHub } from "./components/hub-live";
 import { ChecklistFeed, toTaskListData, useChecklistRowVisible } from "./components/checklist-live";
+import {
+  ReasoningFeed,
+  reasoningKey,
+  useReasoningRowVisible,
+} from "./components/reasoning-live";
 import { AssistantFooter } from "./components/turn-footer";
 import { SystemCard } from "./components/system-card";
 import { parseSystemEnvelope } from "./system-envelope";
@@ -41,6 +46,7 @@ export type LiveToolCallPayload = ToolCallPayload;
 export interface LiveReasoningPayload {
   text: string;
   phase?: string;
+  key?: string;
 }
 
 export interface LiveTodoPayload {
@@ -147,6 +153,7 @@ export function LiveToolCallRenderer({
         imageFile={imageFile}
       />
       <ChecklistFeed agentId={agentId} />
+      <ReasoningFeed agentId={agentId} />
       <TimelineTailHub
         agentId={agentId}
         tokens={tokens}
@@ -170,6 +177,12 @@ export function LiveReasoningRenderer({
   usePointerGlow(preferences.pointerGlow);
   useFrostedGlass(preferences.frostedGlass);
   const data = item.data;
+  const reasoningRowKey = data.key ?? reasoningKey(data.text);
+  const reasoningVisible = useReasoningRowVisible(
+    agentId,
+    reasoningRowKey,
+    preferences.latestReasoningOnly && data.phase !== "streaming",
+  );
   // The host owns the reveal cadence, so streamed reasoning animates the same
   // way it does in the native timeline instead of appearing in whole blocks.
   const revealed = useRevealedText(
@@ -220,6 +233,7 @@ export function LiveReasoningRenderer({
   const hostAutoExpand = useHostAutoExpandReasoning();
   const defaultExpanded = reasoningStartsExpanded(preferences, hostAutoExpand);
 
+  if (!reasoningVisible) return null;
   return (
     <View {...hostFontEscape}>
       <ReasoningTrace
@@ -228,6 +242,7 @@ export function LiveReasoningRenderer({
         defaultExpanded={defaultExpanded}
       />
       <ChecklistFeed agentId={agentId} />
+      <ReasoningFeed agentId={agentId} />
       <TimelineTailHub
         agentId={agentId}
         tokens={tokens}
@@ -333,6 +348,7 @@ export function LiveAssistantRenderer({
         <AssistantFooter text={item.data.text} at={timestamp} tokens={tokens} />
       ) : null}
       <ChecklistFeed agentId={agentId} />
+      <ReasoningFeed agentId={agentId} />
       <TimelineTailHub
         agentId={agentId}
         tokens={tokens}
@@ -458,6 +474,7 @@ export function LiveUserMessageRenderer({
         />
       )}
       <ChecklistFeed agentId={agentId} />
+      <ReasoningFeed agentId={agentId} />
       <TimelineTailHub
         agentId={agentId}
         tokens={tokens}

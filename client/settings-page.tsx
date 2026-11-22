@@ -823,6 +823,13 @@ export function BeautifulChatSettingsPage({ theme }: PluginSurfaceProps) {
               tokens={tokens}
             />
             <ToggleRow
+              title="Show only final reasoning per turn"
+              description="Show only the latest reasoning summary for each turn once the agent feed identifies a newer one. Keep summaries visible while streaming or while the feed is unavailable."
+              value={preferences.latestReasoningOnly}
+              onChange={(latestReasoningOnly) => updateEnhancerPreferences({ latestReasoningOnly })}
+              tokens={tokens}
+            />
+            <ToggleRow
               title="Live checklist"
               description="Show only checklist updates that the feed identifies as current. Keep cards visible while the feed is unavailable. Disable this setting to show every update."
               value={preferences.liveChecklist}

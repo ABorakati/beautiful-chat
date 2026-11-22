@@ -51,6 +51,7 @@ export const preferenceOverridesSchema = z.object({
   collapseLineLimit: optional(z.union([z.literal(0), z.literal(10), z.literal(20), z.literal(50)])),
   expandWhileRunning: boolean,
   collapseReasoning: boolean,
+  latestReasoningOnly: boolean,
   liveChecklist: boolean,
   codeFoldLimit: optional(z.union([z.literal(0), z.literal(30), z.literal(60)])),
   promptFoldLimit: optional(z.union([z.literal(0), z.literal(15), z.literal(30)])),

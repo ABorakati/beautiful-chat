@@ -22,6 +22,11 @@ import {
   isSupersededChecklist,
   subscribeSupersededChecklist,
 } from "./client/components/checklist-live";
+import {
+  isSupersededReasoning,
+  reasoningKey,
+  subscribeSupersededReasoning,
+} from "./client/components/reasoning-live";
 import { buildToolCallPayload } from "./client/tool-call-data";
 import {
   LiveToolCallRenderer,
@@ -116,6 +121,14 @@ export default function contribute(client: PluginClientContext) {
     transform({ item, phase }) {
       if (item.type !== "reasoning") return undefined;
       if (hidesReasoning) return { items: [] };
+      const key = reasoningKey(item.text);
+      if (
+        phase !== "streaming" &&
+        getEnhancerPreferences().latestReasoningOnly &&
+        isSupersededReasoning(key)
+      ) {
+        return { items: [] };
+      }
       return {
         items: [
           {
@@ -125,6 +138,7 @@ export default function contribute(client: PluginClientContext) {
             data: {
               text: item.text,
               phase,
+              key,
             },
           },
         ],
@@ -132,7 +146,28 @@ export default function contribute(client: PluginClientContext) {
     },
   });
   let removeReasoningTransformer = registerReasoningTransformer();
-
+  let reasoningRefresh: NodeJS.Timeout | undefined;
+  const refreshReasoningTransformer = () => {
+    removeReasoningTransformer();
+    removeReasoningTransformer = registerReasoningTransformer();
+  };
+  // Refresh at most once per frame. A timer, not a frame callback, also runs in a hidden window.
+  const stopSupersededReasoningWatch = subscribeSupersededReasoning(() => {
+    if (reasoningRefresh !== undefined || !getEnhancerPreferences().latestReasoningOnly) return;
+    reasoningRefresh = setTimeout(() => {
+      reasoningRefresh = undefined;
+      refreshReasoningTransformer();
+    }, 16);
+  });
+  let latestReasoningOnly = getEnhancerPreferences().latestReasoningOnly;
+  const stopReasoningPrefWatch = subscribeEnhancerPreferences(() => {
+    const next = getEnhancerPreferences().latestReasoningOnly;
+    if (next === latestReasoningOnly) return;
+    latestReasoningOnly = next;
+    clearTimeout(reasoningRefresh);
+    reasoningRefresh = undefined;
+    refreshReasoningTransformer();
+  });
   let stopObservingHost: (() => void) | undefined;
   const refreshToolFolding = () => {
     const preferences = getEnhancerPreferences();
@@ -162,6 +197,7 @@ export default function contribute(client: PluginClientContext) {
     schema: z.object({
       text: z.string(),
       phase: z.string().optional(),
+      key: z.string().optional(),
     }),
     Component: LiveReasoningRenderer,
   });
@@ -382,6 +418,9 @@ export default function contribute(client: PluginClientContext) {
     removePathLinkMenu();
     removeToolTransformer();
     removeToolRenderer();
+    stopSupersededReasoningWatch();
+    stopReasoningPrefWatch();
+    clearTimeout(reasoningRefresh);
     removeReasoningTransformer();
     removeReasoningRenderer();
     stopSupersededWatch();
