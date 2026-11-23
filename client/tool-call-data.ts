@@ -314,14 +314,74 @@ interface AskOption {
   recommended?: boolean;
 }
 
+const HTML_ENTITIES: Record<string, string> = {
+  "&amp;": "&",
+  "&lt;": "<",
+  "&gt;": ">",
+  "&quot;": '"',
+  "&#39;": "'",
+  "&apos;": "'",
+  "&nbsp;": " ",
+};
+
+function decodeHtml(text: string): string {
+  return text.replace(/&(?:amp|lt|gt|quot|#39|apos|nbsp);/g, (entity) => HTML_ENTITIES[entity] ?? entity);
+}
+
+function htmlText(html: string): string {
+  return decodeHtml(html.replace(/<[^>]*>/g, " "))
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function htmlAttr(tag: string, name: string): string | undefined {
+  const match = tag.match(new RegExp(`\\b${name}=("([^"]*)"|'([^']*)'|([^\\s>]+))`, "i"));
+  return match ? (match[2] ?? match[3] ?? match[4]) : undefined;
+}
+
+/**
+ * Since omp 18.18.3 the ask tool sends one HTML form (`{ html }`) instead of
+ * the legacy `questions` list. The title comes from the intro paragraphs and
+ * each radio or checkbox input becomes an option; its label is the text after
+ * the input tag, up to the next control.
+ */
+export function parseAskHtml(html: string): { question: string; options: AskOption[] } | null {
+  const paragraphs = Array.from(html.matchAll(/<p\b[^>]*>([\s\S]*?)<\/p>/g), (match) => htmlText(match[1])).filter(
+    Boolean,
+  );
+  const question = htmlText(paragraphs.join(" ")).split(/(?<=[.?!])\s/)[0] ?? "";
+  const options = Array.from(html.matchAll(/<input\b[^>]*>/g)).flatMap((match, index) => {
+    if (!/\btype=(?:"|')?(?:radio|checkbox)\b/i.test(match[0])) return [];
+    if (/\bdisabled\b/i.test(match[0])) return [];
+    const rest = html.slice((match.index ?? 0) + match[0].length);
+    const stop = /<input\b[^>]*>|<\/?label\b[^>]*>|<\/?fieldset\b[^>]*>|<\/form>/i.exec(rest);
+    const label = htmlText(stop ? rest.slice(0, stop.index) : rest);
+    if (!label) return [];
+    return [
+      {
+        id: htmlAttr(match[0], "value") ?? `opt-${index}`,
+        label,
+        ...( /\bchecked\b/i.test(match[0]) ? { recommended: true } : {}),
+      },
+    ];
+  });
+  if (!question && options.length === 0) return null;
+  return { question, options };
+}
+
 /**
  * The ask tool nests its prompt under `questions`, so reading `input.question`
- * finds nothing and the options never reach the callout.
+ * finds nothing and the options never reach the callout. omp 18.18.3+ instead
+ * sends one HTML form under `html`, which `parseAskHtml` unfolds first.
  */
 export function extractAskQuestion(input: Record<string, unknown>): {
   question: string;
   options: AskOption[];
 } | null {
+  if (typeof input.html === "string") {
+    const parsed = parseAskHtml(input.html);
+    if (parsed) return parsed;
+  }
   const raw = Array.isArray(input.questions)
     ? (input.questions[0] as Record<string, unknown> | undefined)
     : typeof input.question === "string"
